@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IRS Pricing Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>Interest Rate Swap (IRS) Pricing Demo</h1>
+  <p>Enter parameters and click Calculate to price a vanilla IRS using simplified NPV (continuous compounding, flat curves).</p>
+  <form id="irsForm">
+    <div class="inputs-grid">
+      <div class="input-group">
+        <label for="notional">Notional Amount:</label>
+        <input type="number" id="notional" value="1000000" min="0" step="1000">
+      </div>
+      <div class="input-group">
+        <label for="fixedRate">Coupon Rate (Fixed Rate Leg, %):</label>
+        <input type="number" id="fixedRate" value="3.0" min="0" step="0.01">
+      </div>
+      <div class="input-group">
+        <label for="tenor">Tenor (years):</label>
+        <input type="number" id="tenor" value="5" min="1" step="0.5">
+      </div>
+      <div class="input-group">
+        <label for="frequency">Payment Frequency (months):</label>
+        <input type="number" id="frequency" value="6" min="1" max="12">
+      </div>
+      <div class="input-group">
+        <label for="discountRate">Discount Rate (flat curve, %):</label>
+        <input type="number" id="discountRate" value="2.5" min="0" step="0.01">
+      </div>
+      <div class="input-group">
+        <label for="forwardRate">Floating Rate (Floating Rate Leg, %):</label>
+        <input type="number" id="forwardRate" value="2.8" min="0" step="0.01">
+      </div>
+    </div>
+    <button type="button" onclick="calculateIRS()">Calculate PV</button>
+  </form>
+  <div id="results"></div>
+  <script src="script.js"></script>
+</body>
+</html>

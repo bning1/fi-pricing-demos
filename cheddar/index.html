@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fixed Income Pricing Demos</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 1000px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+    h1 { color: #1a365d; }
+    table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+    th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f7fafc; font-weight: 600; }
+    a { color: #4299e1; text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
+    .desc { color: #4a5568; }
+    @media (max-width: 600px) { table { font-size: 0.9rem; } th, td { padding: 0.75rem; } }
+  </style>
+</head>
+<body>
+  <h1>Fixed Income Pricing Demos</h1>
+  <p>Interactive calculators for bonds, swaps, and more. Click to launch.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Demo</th>
+        <th>Description</th>
+        <th>Launch</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Bond Pricing</strong></td>
+        <td class="desc">Price a vanilla fixed-coupon bond given face, coupon, YTM, maturity (discrete compounding).</td>
+        <td><a href="bond/" target="_blank">Open Demo →</a></td>
+      </tr>
+      <tr>
+        <td><strong>IR Swap Pricing</strong></td>
+        <td class="desc">NPV for vanilla IRS (fixed vs floating legs, flat curves, continuous discounting).</td>
+        <td><a href="irswap/" target="_blank">Open Demo →</a></td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="margin-top: 3rem; font-style: italic; color: #718096;">More coming: OIS, Caps/Floors, Duration/Convexity...</p>
+</body>
+</html>
