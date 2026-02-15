@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Call Option Pricing Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>Call Option Pricing Demo</h1>
+  <p>European call option (Black-Scholes model).</p>
+  <form id="callForm">
+    <div class="inputs-grid">
+      <div class="input-group">
+        <label for="spot">Spot Price:</label>
+        <input type="number" id="spot" value="100" min="0" step="0.01">
+      </div>
+      <div class="input-group">
+        <label for="strike">Strike:</label>
+        <input type="number" id="strike" value="100" min="0" step="0.01">
+      </div>
+      <div class="input-group">
+        <label for="time">Time to Expiry (years):</label>
+        <input type="number" id="time" value="1" min="0" step="0.1">
+      </div>
+      <div class="input-group">
+        <label for="r">Risk-free Rate (%):</label>
+        <input type="number" id="r" value="5" min="0" step="0.1">
+      </div>
+      <div class="input-group">
+        <label for="q">Dividend Yield (%):</label>
+        <input type="number" id="q" value="1" min="0" step="0.1">
+      </div>
+      <div class="input-group">
+        <label for="vol">Volatility (%):</label>
+        <input type="number" id="vol" value="20" min="0" step="0.1">
+      </div>
+    </div>
+    <button type="button" onclick="calculateCall()">Calculate Call Price</button>
+  </form>
+  <div id="callResults"></div>
+  <script src="script.js"></script>
+</body>
+</html>
