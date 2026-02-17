@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fixed Income & Options Pricing Demos</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 1000px; margin: 0 auto; padding: 2rem; line-height: 1.6; background: linear-gradient(to bottom, #f8f9fa, #e2e8f0); }
+    h1 { color: #1a365d; text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin-top: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); background: white; border-radius: 12px; overflow: hidden; }
+    th, td { padding: 1.25rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: linear-gradient(135deg, #4299e1, #3182ce); color: white; font-weight: 600; }
+    a { color: white; background: #4299e1; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-weight: 500; transition: all 0.2s; }
+    a:hover { background: #3182ce; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(66,153,225,0.3); }
+    .desc { color: #4a5568; }
+    @media (max-width: 600px) { table { font-size: 0.9rem; } th, td { padding: 0.75rem; } a { display: block; text-align: center; margin: 0.5rem 0; } }
+  </style>
+</head>
+<body>
+  <h1>Fixed Income & Options Pricing Demos</h1>
+  <p style="text-align: center; max-width: 600px; margin: 0 auto 3rem;">Interactive vanilla pricers. Click to launch (new tab).</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Demo</th>
+        <th>Description</th>
+        <th>Launch</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Bond Pricing</strong></td>
+        <td class="desc">Vanilla fixed-coupon bond price (discrete compounding).</td>
+        <td><a href="bond/" target="_blank">Open →</a></td>
+      </tr>
+      <tr>
+        <td><strong>IR Swap Pricing</strong></td>
+        <td class="desc">NPV payer swap (fixed vs floating, flat curves, continuous DF).</td>
+        <td><a href="irswap/" target="_blank">Open →</a></td>
+      </tr>
+      <tr>
+        <td><strong>Cap/Floor Pricing</strong></td>
+        <td class="desc">Payer cap NPV (Black '76 caplets, flat F/vol).</td>
+        <td><a href="capfloor/" target="_blank">Open →</a></td>
+      </tr>
+      <tr>
+        <td><strong>Swaption Pricing</strong></td>
+        <td class="desc">European payer swaption (Black on fwd swap rate * annuity).</td>
+        <td><a href="swaption/" target="_blank">Open →</a></td>
+      </tr>
+      <tr>
+        <td><strong>Call Option Pricing</strong></td>
+        <td class="desc">European call (Black-Scholes, continuous r/div).</td>
+        <td><a href="calloption/" target="_blank">Open →</a></td>
+      </tr>
+      <tr>
+        <td><strong>Equity TRS Pricing</strong></td>
+        <td class="desc">Equity TRS NPV (MC GBM paths, price + cont. div yield).</td>
+        <td><a href="equity-trs/" target="_blank">Open →</a></td>
+      </tr>
+      <tr>\n        <td><strong>CDS Pricing</strong></td>\n        <td class=\"desc\">CDS buyer protection NPV (constant hazard λ, discrete legs).</td>\n        <td><a href=\"cds/\" target=\"_blank\">Open →</a></td>\n      </tr>\n    </tbody>  </table>
+  <p style="margin-top: 3rem; font-style: italic; color: #718096; text-align: center;">More: OIS, Bermudans, Greeks... <a href="https://github.com/bning1/fi-pricing-demos" target="_blank">GitHub</a></p>
+</body>
+</html>
