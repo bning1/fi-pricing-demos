@@ -1,0 +1,126 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem;
+  line-height: 1.6;
+  background-color: #f8f9fa;
+  color: #333;
+}
+
+h1 {
+  color: #1a365d;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+}
+
+p {
+  color: #4a5568;
+}
+
+form {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #2d3748;
+}
+
+input {
+  padding: 0.75rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+input:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+#cdsResults {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#cdsResults h2 {
+  color: #1a365d;
+  margin-top: 0;
+}
+
+.npv-display {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #48bb78;
+  margin: 1rem 0;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #c6f6d5, #9ae6b4);
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(72, 187, 120, 0.2);
+}
+
+.leg-pv {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.leg-item {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #edf2f7, #e2e8f0);
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.leg-item strong {
+  display: block;
+  font-size: 1.1rem;
+  color: #1a365d;
+  margin-bottom: 0.5rem;
+}
+
+canvas {
+  max-height: 400px !important;
+  height: 350px !important;
+  width: 100% !important;
+  margin: 1.5rem 0;
+}
+
+@media (max-width: 600px) {
+  body {
+    padding: 1rem;
+  }
+  
+  .inputs-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .leg-pv {
+    grid-template-columns: 1fr;
+  }
+}
