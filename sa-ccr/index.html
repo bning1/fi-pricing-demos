@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>SA-CCR Demo</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+table {border-collapse:collapse;}
+th,td {border:1px solid #ddd; padding:8px;}
+input {width:60px;}
+button {margin:2px;}
+div {margin:10px 0;}
+</style>
+</head>
+<body>
+<h1>SA-CCR | Standardised CCR EAD calc</h1>
+
+<h3>Supervisory Factors Table (MF %)</h3>
+<table id="factors">
+<thead><tr><th>Asset Class</th><th>MF</th></tr></thead>
+<tbody>
+<tr><td>IR</td><td>0.5</td></tr>
+<tr><td>FX</td><td>4</td></tr>
+<tr><td>Equity</td><td>32</td></tr>
+</tbody>
+</table>
+
+<h3>Global Inputs ($mm)</h3>
+<label>Net MTM (V): <input id="v" type="number" value="0" onchange="compute()"></label><br>
+<label>Threshold (Th): <input id="th" type="number" value="0" onchange="compute()"></label><br>
+<label>Collateral (C): <input id="c" type="number" value="0" onchange="compute()"></label><br>
+<label>Margin Period Multiplier M: <input id="m" type="number" step="0.01" value="1.0" onchange="compute()"></label><br>
+<p>Alpha: <strong>1.4</strong> (fixed)</p>
+
+<h3>Interactive Portfolio</h3>
+<button onclick="addTrade()">Add Trade</button>
+<table id="trades">
+<thead><tr><th>Name</th><th>Asset Class</th><th>Notional</th><th>Maturity (y)</th><th>Delta</th><th>Action</th></tr></thead>
+<tbody></tbody>
+</table>
+
+<h3>Per Trade AddOn Breakdown</h3>
+<table id="breakdown">
+<thead><tr><th>Name</th><th>Asset</th><th>Notional</th><th>Mat</th><th>Delta</th><th>Mat Factor</th><th>AddOn_i</th></tr></thead>
+<tbody></tbody>
+</table>
+
+<h3>Results ($mm)</h3>
+<p>Replacement Cost (RC): <strong id="rc">0</strong></p>
+<p>Potential Future Exposure AddOn = α × Σ(delta_i × MF × AddOn_i): <strong id="addon">0</strong></p>
+<p>EAD = RC + M × AddOn: <strong id="ead">0</strong></p>
+
+<h3>Full Formulas Step-by-Step</h3>
+<div id="formulas"></div>
+
+<h3>Charts</h3>
+<div>
+EAD Components (Pie): <canvas id="pieChart" width="300" height="300"></canvas>
+</div>
+<div>
+AddOn Sensitivity by Asset (Bar): <canvas id="sensitivity" width="400" height="200"></canvas>
+</div>
+
+<script>
+let trades = [
+  {name: 'IR Swap', asset: 'IR', notional: 100, mat: 10, delta: 1},
+  {name: 'FX Swap', asset: 'FX', notional: 50, mat: 2, delta: 1},
+  {name: 'IR Option', asset: 'IR', notional: 20, mat: 1, delta: 0.5},
+  {name: 'Equity Option', asset: 'Equity', notional: 10, mat: 3, delta: 0.6}
+];
+
+const factors = {IR: 0.005, FX: 0.04, Equity: 0.32};
+const alpha = 1.4;
+
+function matFactor(asset, mat) {
+  if (asset !== 'IR') return 1;
+  return Math.sqrt(Math.min(mat / 5, 1));
+}
+
+function compute() {
+  let sumAddonI = 0;
+  let breakdown = '';
+  let assetSums = {};
+  trades.forEach((t, i) => {
+    let mf = matFactor(t.asset, t.mat);
+    let addoni = t.delta * factors[t.asset] * mf * t.notional;
+    sumAddonI += addoni;
+    breakdown += `<tr><td>${t.name}</td><td>${t.asset}</td><td>${t.notional.toFixed(0)}</td><td>${t.mat}</td><td>${t.delta}</td><td>${mf.toFixed(3)}</td><td>${addoni.toFixed(2)}</td></tr>`;
+    if (!assetSums[t.asset]) assetSums[t.asset] = 0;
+    assetSums[t.asset] += addoni;
+  });
+  let addon = alpha * sumAddonI;
+  let v = parseFloat(document.getElementById('v').value) || 0;
+  let th = parseFloat(document.getElementById('th').value) || 0;
+  let c = parseFloat(document.getElementById('c').value) || 0;
+  let m = parseFloat(document.getElementById('m').value) || 1;
+  let rc = Math.max(v - c, 0) + Math.max(th - c, 0);
+  let ead = rc + m * addon;
+  document.getElementById('rc').innerText = rc.toFixed(2);
+  document.getElementById('addon').innerText = addon.toFixed(2);
+  document.getElementById('ead').innerText = ead.toFixed(2);
+  document.getElementById('breakdown').querySelector('tbody').innerHTML = breakdown;
+
+  // Formulas
+  document.getElementById('formulas').innerHTML = `
+    <p><strong>RC = max(V - C, 0) + max(Th - C, 0) = ${rc.toFixed(2)}</strong></p>
+    <p><strong>For trade i: AddOn_i = δ_i × MF × MatFactor_i × Notional_i</strong></p>
+    <ul>
+    <li>MatFactor (IR) = √(min(Maturity/5, 1)); FX/Equity = 1</li>
+    <li>MF (Supervisory Factor): IR=0.5%, FX=4%, Equity=32%</li>
+    </ul>
+    <p><strong>AddOn = α × Σ AddOn_i = ${addon.toFixed(2)} (α=1.4)</strong></p>
+    <p><strong>EAD = RC + M × AddOn = ${ead.toFixed(2)}</strong></p>
+  `;
+
+  // Charts
+  pieChart();
+  barChart(Object.keys(assetSums), Object.values(assetSums));
+}
+
+function pieChart() {
+  let rc = parseFloat(document.getElementById('rc').innerText);
+  let addon = parseFloat(document.getElementById('addon').innerText);
+  let ctx = document.getElementById('pieChart').getContext('2d');
+  if (window.pieChartInstance) window.pieChartInstance.destroy();
+  window.pieChartInstance = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: ['RC', 'AddOn'],
+      datasets: [{ data: [rc, addon], backgroundColor: ['#FF6384', '#36A2EB'] }]
+    },
+    options: { responsive: true }
+  });
+}
+
+function barChart(labels, data) {
+  let ctx = document.getElementById('sensitivity').getContext('2d');
+  if (window.barChartInstance) window.barChartInstance.destroy();
+  window.barChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{ label: 'AddOn_i Sum ($mm)', data: data, backgroundColor: '#FFCE56' }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+  });
+}
+
+function renderTrades() {
+  let tbody = document.querySelector('#trades tbody');
+  tbody.innerHTML = '';
+  trades.forEach((t, i) => {
+    let row = document.createElement('tr');
+    row.innerHTML = `
+      <td><input value="${t.name}" onchange="updateTrade(${i}, 'name', this.value); compute()"></td>
+      <td>
+        <select onchange="updateTrade(${i}, 'asset', this.value); compute()">
+          <option ${t.asset === 'IR' ? 'selected' : ''}>IR</option>
+          <option ${t.asset === 'FX' ? 'selected' : ''}>FX</option>
+          <option ${t.asset === 'Equity' ? 'selected' : ''}>Equity</option>
+        </select>
+      </td>
+      <td><input type="number" value="${t.notional}" onchange="updateTrade(${i}, 'notional', parseFloat(this.value)); compute()"></td>
+      <td><input type="number" step="0.1" value="${t.mat}" onchange="updateTrade(${i}, 'mat', parseFloat(this.value)); compute()"></td>
+      <td><input type="number" step="0.01" min="0" max="1" value="${t.delta}" onchange="updateTrade(${i}, 'delta', parseFloat(this.value)); compute()"></td>
+      <td><button onclick="deleteTrade(${i})">Delete</button></td>
+    `;
+    tbody.appendChild(row);
+  });
+  compute();
+}
+
+function updateTrade(i, prop, val) {
+  trades[i][prop] = val;
+}
+
+function addTrade() {
+  trades.push({name: 'New Trade', asset: 'IR', notional: 10, mat: 1, delta: 1});
+  renderTrades();
+}
+
+function deleteTrade(i) {
+  trades.splice(i, 1);
+  renderTrades();
+}
+
+window.onload = renderTrades;
+</script>
+</body>
+</html>
