@@ -131,7 +131,7 @@ canvas {
 
 <h3>Global Inputs ($)</h3>
 <div class="global-inputs">
-  <label>Net MTM (V): <input id="v" type="number" value="0" onchange="compute()"></label>
+  <label>Net MTM (V): <input id="v" type="number" value="0" min="-1000000" step="1" max="1000000" onchange="compute()"></label>
   <label>Threshold (Th): <input id="th" type="number" value="0" onchange="compute()"></label>
   <label>Collateral (C): <input id="c" type="number" value="0" onchange="compute()"></label>
   <label>Margin Period Multiplier M: <input id="m" type="number" step="0.01" value="1.0" onchange="compute()"></label>
