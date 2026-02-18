@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CDS Pricing (Advanced)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 1400px; margin: 0 auto; padding: 2rem; background: linear-gradient(to bottom, #f8f9fa, #e2e8f0); line-height: 1.6; }
+    .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; }
+    @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
+    .section { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    h2, h3 { color: #1a365d; margin-top: 0; }
+    label { display: block; margin: 1rem 0 0.5rem; font-weight: 500; }
+    input, select { width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px; box-sizing: border-box; }
+    input[type="range"] { width: 60%; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { padding: 0.75rem; text-align: right; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f7fafc; text-align: left; font-weight: 600; color: #4a5568; }
+    td[contenteditable] { background: #fdf6e3; cursor: text; }
+    button { padding: 0.75rem 1.5rem; margin: 0.5rem 0.25rem 0 0; background: #4299e1; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    button:hover { background: #3182ce; transform: translateY(-1px); }
+    .outputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .output-item { background: #edf2f7; padding: 1rem; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: 600; color: #2d3748; }
+    #charts { grid-column: 1 / -1; }
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    @media (max-width: 768px) { .chart-row { grid-template-columns: 1fr; } }
+    canvas { height: 350px !important; }
+  </style>
+</head>
+<body>
+  <h1 style="text-align: center; color: #1a365d;">CDS Pricing (Advanced Bootstrap)</h1>
+  <p style="text-align: center; color: #4a5568; max-width: 800px; margin: 0 auto 3rem;">Bootstrap term structure hazard rates from par CDS spreads. Full accrual approximation. Flat or table discount curve. Responsive charts.</p>
+  <div class="container">
+    <div class="section">
+      <h2>Core Inputs</h2>
+      <label>Notional: $<input id="notional" value="10,000,000" type="text" oninput="this.value=this.value.replace(/,/g,'') || '10000000'"></label>
+      <label>Recovery Rate: <input type="range" id="recovery" min="0" max="1" step="0.001" value="0.4"> <span id="recVal">40%</span></label>
+      <label>Fixed Spread (bps) for NPV: <input id="fixedSpread" value="130" type="number"></label>
+      <label>Discount Rate flat (%): <input id="rFlat" value="3.0" step="0.01" type="number"></label>
+      <label><input type="checkbox" id="useRCurve"> Use r Curve Table</label>
+      <div id="rTableSect" style="display:none;">
+        <h3>r Curve</h3>
+        <table id="rTable">
+          <thead><tr><th>Tenor (Years)</th><th>Rate (%)</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <button onclick="addRRow()">+ Add Row</button>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Market Par Spreads</h2>
+      <table id="quotesTable">
+        <thead><tr><th>Maturity (Years)</th><th>Spread (bps)</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button onclick="addQuoteRow()">+ Add Row</button>
+      <input type="file" id="csvImport" accept=".csv" onchange="importCSV(event)" style="display: inline-block; width: auto;">
+      <button onclick="document.getElementById('csvImport').click()">Import CSV</button>
+      <button onclick="exportCSV()">Export CSV</button>
+    </div>
+    <div class="section">
+      <h2>Actions</h2>
+      <button onclick="bootstrapHazards()">🔧 Bootstrap Hazards from Spreads</button>
+      <button onclick="computeNPV()">💰 Compute NPV</button>
+      <button onclick="solveParSpread()">🎯 Solve Par Spread</button>
+      <div style="margin-top: 1rem; font-size: 0.9rem; color: #718096;">
+        <strong>Flow:</strong> Load samples → Bootstrap → Adjust fixed spread → NPV / Par
+      </div>
+    </div>
+    <div class="section">
+      <h2>Results</h2>
+      <div class="outputs">
+        <div class="output-item">NPV<br>$<span id="npvOut">-</span></div>
+        <div class="output-item">Premium PV<br>$<span id="premOut">-</span></div>
+        <div class="output-item">Protection PV<br>$<span id="protOut">-</span></div>
+        <div class="output-item">Risky Duration<br><span id="riskyDur">-</span></div>
+        <div class="output-item">Solved Par (bps)<br><span id="parOut">-</span></div>
+      </div>
+    </div>
+    <div class="section" id="chartsSect">
+      <h2>Curves & Bootstrap</h2>
+      <div class="chart-row">
+        <canvas id="survivalChart"></canvas>
+        <canvas id="hazardChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <script>
+    // ... JS code here, full implementation as sketched
+let survivalChart, hazardChart;
+let bootstrappedHazards = [];
+let matYears = [];
+let marketSpreads = [];
+let rTimes = [];
+let rRates = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+  initCharts();
+  updateRecVal();
+  loadSampleQuotes();
+  loadSampleRCurve(); // optional
+  document.getElementById('useRCurve').addEventListener('change', toggleRCurve);
+  document.getElementById('recovery').addEventListener('input', updateRecVal);
+  document.getElementById('notional').value = '10000000';
+});
+
+function toggleRCurve() {
+  document.getElementById('rTableSect').style.display = document.getElementById('useRCurve').checked ? 'block' : 'none';
+}
+
+function updateRecVal() {
+  const rec = parseFloat(document.getElementById('recovery').value);
+  document.getElementById('recVal').textContent = (rec * 100).toFixed(1) + '%';
+}
+
+function loadSampleQuotes() {
+  const samples = [
+    {mat: 1, spr: 60},
+    {mat: 2, spr: 90},
+    {mat: 3, spr: 110},
+    {mat: 5, spr: 135},
+    {mat: 7, spr: 150},
+    {mat: 10, spr: 165}
+  ];
+  const tbody = document.querySelector('#quotesTable tbody');
+  tbody.innerHTML = '';
+  samples.forEach(s => addQuoteRow(s.mat, s.spr));
+}
+
+function loadSampleRCurve() {
+  const samples = [
+    {t: 0.5, r: 2.9},
+    {t: 1, r: 3.0},
+    {t: 2, r: 3.1},
+    {t: 5, r: 3.4},
+    {t: 10, r: 3.8}
+  ];
+  const tbody = document.querySelector('#rTable tbody');
+  tbody.innerHTML = '';
+  samples.forEach(s => addRRow(s.t, s.r));
+}
+
+function addQuoteRow(mat = '', spr = '') {
+  const tbody = document.querySelector('#quotesTable tbody');
+  const row = tbody.insertRow();
+  row.innerHTML = `
+    <td contenteditable="true">${mat}</td>
+    <td contenteditable="true">${spr}</td>
+    <td><button onclick="deleteRow(this)">Delete</button></td>
+  `;
+}
+
+function addRRow(t = '', r = '') {
+  const tbody = document.querySelector('#rTable tbody');
+  const row = tbody.insertRow();
+  row.innerHTML = `
+    <td contenteditable="true">${t}</td>
+    <td contenteditable="true">${r}</td>
+    <td><button onclick="deleteRRow(this)">Delete</button></td>
+  `;
+}
+
+function deleteRow(btn) {
+  btn.closest('tr').remove();
+}
+
+function deleteRRow(btn) {
+  btn.closest('tr').remove();
+}
+
+function getQuotes() {
+  const rows = document.querySelectorAll('#quotesTable tbody tr');
+  const quotes = [];
+  rows.forEach(row => {
+    const mat = parseFloat(row.cells[0].textContent);
+    const spr = parseFloat(row.cells[1].textContent);
+    if (!isNaN(mat) && !isNaN(spr) && mat > 0) {
+      quotes.push({mat, spr});
+    }
+  });
+  quotes.sort((a, b) => a.mat - b.mat);
+  matYears = quotes.map(q => q.mat);
+  marketSpreads = quotes.map(q => q.spr);
+  return quotes;
+}
+
+function getRData() {
+  if (!document.getElementById('useRCurve').checked) {
+    return {flat: parseFloat(document.getElementById('rFlat').value) / 100};
+  }
+  const rows = document.querySelectorAll('#rTable tbody tr');
+  const rdata = [];
+  rows.forEach(row => {
+    const tenor = parseFloat(row.cells[0].textContent);
+    const ratep = parseFloat(row.cells[1].textContent);
+    if (!isNaN(tenor) && !isNaN(ratep)) {
+      rdata.push({t: tenor, r: ratep / 100});
+    }
+  });
+  rdata.sort((a, b) => a.t - b.t);
+  return {
+    times: rdata.map(d => d.t),
+    rates: rdata.map(d => d.r)
+  };
+}
+
+function importCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const lines = ev.target.result.split('\n').map(l => l.trim()).filter(l => l);
+    const tbody = document.querySelector('#quotesTable tbody');
+    tbody.innerHTML = '';
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(',');
+      if (parts.length >= 2) {
+        const mat = parseFloat(parts[0]);
+        const spr = parseFloat(parts[1]);
+        if (!isNaN(mat) && !isNaN(spr)) addQuoteRow(mat, spr);
+      }
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function exportCSV() {
+  getQuotes();
+  const csv = 'Maturity (Years),Spread (bps)\n' + matYears.map((m, i) => `${m},${marketSpreads[i]}`).join('\n') + '\n';
+  const blob = new Blob([csv], {type: 'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cds_market_spreads.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function initCharts() {
+  const survivalCtx = document.getElementById('survivalChart').getContext('2d');
+  survivalChart = new Chart(survivalCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'Survival Probability',
+          data: [],
+          borderColor: 'blue',
+          backgroundColor: 'rgba(66, 153, 225, 0.1)',
+          fill: true
+        },
+        {
+          label: 'Cumulative Default Probability',
+          data: [],
+          borderColor: 'orange',
+          backgroundColor: 'rgba(255, 165, 0, 0.1)',
+          fill: true
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { title: { display: true, text: 'Years' } },
+        y: { min: 0, max: 1, title: { display: true, text: 'Probability' } }
+      }
+    }
+  });
+
+  const hazardCtx = document.getElementById('hazardChart').getContext('2d');
+  hazardChart = new Chart(hazardCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'Implied Hazard Rate (%)',
+          data: [],
+          borderColor: 'red',
+          yAxisID: 'y',
+          fill: false
+        },
+        {
+          label: 'Input Par Spread (bps)',
+          data: [],
+          borderColor: 'green',
+          yAxisID: 'y1',
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { title: { display: true, text: 'Years' } },
+        y: {
+          type: 'linear',
+          position: 'left',
+          title: { display: true, text: 'Hazard (%)' }
+        },
+        y1: {
+          type: 'linear',
+          position: 'right',
+          title: { display: true, text: 'Spread (bps)' },
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
+}
+
+function bisect(f, a, b, tol = 1e-8, maxIter = 100) {
+  let fa = f(a);
+  let fb = f(b);
+  if (fa * fb > 0) {
+    console.error('Bisect: f(a) and f(b) same sign');
+    return b;
+  }
+  for (let i = 0; i < maxIter; i++) {
+    const c = (a + b) / 2;
+    const fc = f(c);
+    if (Math.abs(fc) < tol) return c;
+    if (fa * fc < 0) {
+      b = c;
+      fb = fc;
+    } else {
+      a = c;
+      fa = fc;
+    }
+  }
+  return (a + b) / 2;
+}
+
+function survivalAt(t, matYears, hazards) {
+  if (t <= 0) return 1.0;
+  let q = 1.0;
+  let prevT = 0.0;
+  for (let j = 0; j < hazards.length; j++) {
+    const segEnd = matYears[j];
+    const lam = hazards[j];
+    const segLen = Math.min(t, segEnd) - prevT;
+    q *= Math.exp(-lam * segLen);
+    prevT = segEnd;
+    if (t <= segEnd) return q;
+  }
+  // Extrapolate
+  const lastLam = hazards[hazards.length - 1];
+  const extra = t - prevT;
+  q *= Math.exp(-lastLam * extra);
+  return q;
+}
+
+function discountFactor(t, rdata) {
+  if (rdata.flat !== undefined) {
+    return Math.exp(-rdata.flat * t);
+  }
+  const times = rdata.times;
+  const rates = rdata.rates;
+  if (times.length === 0 || t === 0) return 1.0;
+  let integ = 0.0;
+  let pt = 0.0;
+  let k = 0;
+  while (pt < t && k < times.length) {
+    const prevTime = k === 0 ? 0 : times[k - 1];
+    const ct = times[k];
+    const r1 = rates[k === 0 ? 0 : k - 1];
+    const r2 = rates[k];
+    const slope = (r2 - r1) / (ct - prevTime);
+    const et = Math.min(t, ct);
+    const dtt = et - pt;
+    integ += r1 * dtt + 0.5 * slope * dtt * dtt;
+    pt = et;
+    k++;
+  }
+  if (pt < t) {
+    const lastR = rates[rates.length - 1];
+    const dtt = t - pt;
+    integ += lastR * dtt;
+  }
+  return Math.exp(-integ);
+}
+
+function getPayments(T) {
+  const pays = [];
+  for (let tt = 0.25; tt <= T; tt += 0.25) {
+    pays.push(tt);
+  }
+  return pays;
+}
+
+function defaultLeg(T, matYears, hazards, rdata) {
+  const pays = getPayments(T);
+  let defLeg = 0;
+  for (let i = 1; i < pays.length; i++) {
+    const t1 = pays[i - 1];
+    const t2 = pays[i];
+    const q1 = survivalAt(t1, matYears, hazards);
+    const q2 = survivalAt(t2, matYears, hazards);
+    const df = discountFactor(t2, rdata);
+    defLeg += df * (q1 - q2);
+  }
+  return defLeg;
+}
+
+function rp01(T, matYears, hazards, rdata) {
+  const pays = getPayments(T);
+  let rpv = 0;
+  for (let i = 1; i < pays.length; i++) {
+    const t1 = pays[i - 1];
+    const t2 = pays[i];
+    const delta = 0.25;
+    const qavg = 0.5 * (survivalAt(t1, matYears, hazards) + survivalAt(t2, matYears, hazards));
+    const df_mid = discountFactor((t1 + t2) / 2, rdata);
+    rpv += delta * df_mid * qavg;
+  }
+  return rpv;
+}
+
+function accrual01(T, matYears, hazards, rdata) {
+  const pays = getPayments(T);
+  let accr = 0;
+  for (let i = 1; i < pays.length; i++) {
+    const t1 = pays[i - 1];
+    const t2 = pays[i];
+    const delta = 0.25;
+    const q1 = survivalAt(t1, matYears, hazards);
+    const q2 = survivalAt(t2, matYears, hazards);
+    const df = discountFactor(t2, rdata);
+    accr += 0.5 * delta * df * (q1 - q2);
+  }
+  return accr;
+}
+
+function cdsNPV(T, fixedS, hazards, matYears, rdata, rec) {
+  const prot = defaultLeg(T, matYears, hazards, rdata);
+  const protPV = (1 - rec) * prot;
+  const riskyDur = rp01(T, matYears, hazards, rdata) + accrual01(T, matYears, hazards, rdata);
+  const premPV = fixedS * riskyDur;
+  return protPV - premPV;
+}
+
+function bootstrapOneLam(i, matYears, spreadsDec, rdata, rec) {
+  const T = matYears[i];
+  const S = spreadsDec[i];
+  const tempMat = matYears.slice(0, i + 1);
+  const prevHazards = bootstrappedHazards.slice(0, i);
+  const f = (lam) => cdsNPV(T, S, prevHazards.concat(lam), tempMat, rdata, rec);
+  return bisect(f, 0, 2);
+}
+
+function bootstrapHazards() {
+  getQuotes();
+  if (matYears.length === 0) {
+    alert('Please add market quotes.');
+    return;
+  }
+  const rdata = getRData();
+  const rec = parseFloat(document.getElementById('recovery').value);
+  const spreadsDec = marketSpreads.map(s => s / 10000);
+  bootstrappedHazards = [];
+  const survs = [1.0];
+  for (let i = 0; i < matYears.length; i++) {
+    const lam = bootstrapOneLam(i, matYears, spreadsDec, rdata, rec);
+    bootstrappedHazards.push(lam);
+    const prevT = i === 0 ? 0 : matYears[i - 1];
+    const surv = survs[i] * Math.exp(-lam * (matYears[i] - prevT));
+    survs.push(surv);
+  }
+  plotCharts();
+  console.log('Bootstrapped hazards:', bootstrappedHazards.map(h => (h*100).toFixed(2) + '%'));
+}
+
+function hazardAt(t, matYears, hazards) {
+  if (t <= 0) return 0;
+  for (let j = 0; j < matYears.length; j++) {
+    if (t <= matYears[j]) return hazards[j];
+  }
+  return hazards[hazards.length - 1];
+}
+
+function parSpreadAt(t, matYears, spreads) {
+  if (t <= matYears[0]) return spreads[0];
+  if (t >= matYears[matYears.length - 1]) return spreads[spreads.length - 1];
+  for (let j = 0; j < matYears.length - 1; j++) {
+    if (t <= matYears[j + 1]) {
+      const frac = (t - matYears[j]) / (matYears[j + 1] - matYears[j]);
+      return spreads[j] + frac * (spreads[j + 1] - spreads[j]);
+    }
+  }
+  return spreads[spreads.length - 1];
+}
+
+function plotCharts() {
+  const maxT = matYears[matYears.length - 1];
+  const plotTimes = [];
+  for (let tt = 0; tt <= maxT; tt += 0.1) plotTimes.push(tt);
+  // Survival
+  const survData = plotTimes.map(t => survivalAt(t, matYears, bootstrappedHazards));
+  survivalChart.data.labels = plotTimes.map(t => t.toFixed(1));
+  survivalChart.data.datasets[0].data = survData;
+  survivalChart.data.datasets[1].data = survData.map(s => 1 - s);
+  survivalChart.update();
+  // Hazard & Spread
+  const hazData = plotTimes.map(t => hazardAt(t, matYears, bootstrappedHazards) * 100);
+  const spreadData = plotTimes.map(t => parSpreadAt(t, matYears, marketSpreads));
+  hazardChart.data.labels = plotTimes.map(t => t.toFixed(1));
+  hazardChart.data.datasets[0].data = hazData;
+  hazardChart.data.datasets[1].data = spreadData;
+  hazardChart.update();
+}
+
+function computeNPV() {
+  if (matYears.length === 0 || bootstrappedHazards.length === 0) {
+    alert('Bootstrap hazards first.');
+    return;
+  }
+  const maxT = matYears[matYears.length - 1];
+  const fixedS = parseFloat(document.getElementById('fixedSpread').value) / 10000;
+  const rdata = getRData();
+  const rec = parseFloat(document.getElementById('recovery').value);
+  const notional = parseFloat(document.getElementById('notional').value.replace(/,/g, ''));
+  const npv = cdsNPV(maxT, fixedS, bootstrappedHazards, matYears, rdata, rec) * notional;
+  const protLeg = defaultLeg(maxT, matYears, bootstrappedHazards, rdata) * (1 - rec) * notional;
+  const premLeg = fixedS * (rp01(maxT, matYears, bootstrappedHazards, rdata) + accrual01(maxT, matYears, bootstrappedHazards, rdata)) * notional;
+  const riskyDur = (rp01(maxT, matYears, bootstrappedHazards, rdata) + accrual01(maxT, matYears, bootstrappedHazards, rdata)) * notional;
+  document.getElementById('npvOut').textContent = npv.toLocaleString('en-US', {maximumFractionDigits: 0});
+  document.getElementById('protOut').textContent = protLeg.toLocaleString('en-US', {maximumFractionDigits: 0});
+  document.getElementById('premOut').textContent = premLeg.toLocaleString('en-US', {maximumFractionDigits: 0});
+  document.getElementById('riskyDur').textContent = riskyDur.toLocaleString('en-US', {maximumFractionDigits: 2});
+}
+
+function solveParSpread() {
+  if (matYears.length === 0 || bootstrappedHazards.length === 0) {
+    alert('Bootstrap hazards first.');
+    return;
+  }
+  const maxT = matYears[matYears.length - 1];
+  const rdata = getRData();
+  const prot = defaultLeg(maxT, matYears, bootstrappedHazards, rdata) * (1 - parseFloat(document.getElementById('recovery').value));
+  const riskyDur = rp01(maxT, matYears, bootstrappedHazards, rdata) + accrual01(maxT, matYears, bootstrappedHazards, rdata);
+  const parS_bps = (prot / riskyDur) * 10000;
+  document.getElementById('parOut').textContent = parS_bps.toFixed(1);
+}
+  </script>
+</body>
+</html>
