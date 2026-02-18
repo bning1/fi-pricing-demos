@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VaR HS - Historical Simulation</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <h1>VaR Historical Simulation Demo</h1>
+        <p>Simple HS VaR with hard-coded daily P&amp;L data for stock, bond, FX portfolio.</p>
+        <div class="row">
+            <div class="col-lg-3 col-md-4 col-sm-12">
+                <h3>Portfolio Weights (%)</h3>
+                <div class="mb-3">
+                    <label for="wStock" class="form-label">Stock:</label>
+                    <input type="range" class="form-range" id="wStock" min="0" max="100" value="33">
+                    <span id="wStockVal" class="badge bg-primary">33%</span>
+                </div>
+                <div class="mb-3">
+                    <label for="wBond" class="form-label">Bond:</label>
+                    <input type="range" class="form-range" id="wBond" min="0" max="100" value="33">
+                    <span id="wBondVal" class="badge bg-primary">33%</span>
+                </div>
+                <div class="mb-3">
+                    <label for="wFx" class="form-label">FX:</label>
+                    <input type="range" class="form-range" id="wFx" min="0" max="100" value="34">
+                    <span id="wFxVal" class="badge bg-primary">34%</span>
+                </div>
+                <div class="mb-3">
+                    <label for="window" class="form-label">Window (days):</label>
+                    <input type="range" class="form-range" id="window" min="50" max="252" value="252">
+                    <span id="windowVal" class="badge bg-secondary">252</span>
+                </div>
+                <div class="mb-3">
+                    <label for="conf" class="form-label">Confidence:</label>
+                    <select id="conf" class="form-select">
+                        <option value="95">95%</option>
+                        <option value="99" selected>99%</option>
+                    </select>
+                </div>
+                <div id="totalWeight" class="alert alert-info">Total: 100%</div>
+            </div>
+            <div class="col-lg-9 col-md-8 col-sm-12">
+                <canvas id="histChart" class="border mb-4"></canvas>
+                <canvas id="sortedChart" class="border"></canvas>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h3>Top 10 Worst P&amp;L</h3>
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm" id="topTable">
+                        <thead>
+                            <tr><th>Day</th><th>P&amp;L (%)</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h3>Statistics</h3>
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm" id="statsTable">
+                        <thead>
+                            <tr><th>Metric</th><th>Value (%)</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Hard-coded data
+        const stockPnls = [-0.015,0.0227,-0.0293,0.0134,0.0274,0.0011,0.0157,-0.0037,-0.009,-0.026,0.0225,-0.0042,-0.0017,-0.0102,-0.0412,-0.0014,0.0002,-0.0026,-0.0419,0.0087,0.013,0.0006,0.024,-0.0596,-0.0229,0.0166,0.004,0.006,0.0141,-0.0063,-0.0124,-0.0074,-0.0074,0.0102,-0.0067,0.0003,0.0401,0.006,-0.0206,0.0134,-0.0142,-0.0069,0.0025,0.0087,0.0006,-0.0079,0.0131,0.0107,0.0106,-0.0491,-0.022,-0.0182,-0.0177,-0.0271,-0.0351,0.0048,0.0343,0.0154,0.0313,0.0347,-0.0023,0.0091,-0.0003,0.0245,-0.006,0.023,-0.0023,0.0143,-0.001,-0.0039,0.0391,-0.0024,0.0141,0.0204,-0.0201,0.0057,0.0135,-0.0062,0.0157,-0.0188,0.0093,-0.0015,-0.0034,-0.0027,-0.0219,-0.0131,0.0017,0.0085,0.0354,0.0262,0.0113,0.0007,0.0056,-0.0209,-0.0114,-0.0212,0.003,-0.0262,0.026,0.0043,0.0171,-0.0097,-0.019,-0.008,-0.0016,-0.038,0.0001,-0.0195,-0.0013,-0.0534,-0.0177,0.0268,0.0195,-0.0052,-0.0045,-0.0126,0.0148,0.0092,-0.0066,0.0211,-0.0086,-0.0059,0.0146,-0.0307,-0.0467,-0.0487,-0.0149,-0.0042,-0.0273,-0.0068,0.0201,0.0004,-0.0221,-0.0294,0.032,0.0006,-0.0006,0.0214,-0.0007,0.0329,-0.0036,0.0044,0.0428,0.0136,0.0037,0.0057,0.017,-0.0176,0.011,-0.0039,0.0199,-0.0093,0.0291,-0.0209,-0.009,0.0041,0.0063,-0.011,-0.0153,0.0044,0.0045,-0.0096,0.0006,-0.0109,0.0172,-0.0407,-0.0287,-0.0172,0.0227,-0.0009,-0.0004,0.014,0.013,0.0216,0.0062,0.0436,-0.0155,-0.0273,0.0113,-0.0351,-0.0192,-0.026,0.0122,0.0302,0.0082,-0.0193,-0.0113,-0.0026,-0.0192,0.0082,0.0071,0.0145,0.017,-0.0128,-0.0067,-0.026,-0.0145,0.0187,-0.0223,0.0067,0.005,0.0203,0.0147,0.0056,-0.0279,0.0252,0.0281,-0.0061,-0.034,-0.0006,-0.0257,0.0073,0.0075,0.0341,-0.0026,0.0013,0.049,0.0156,0.033,-0.0198,0.0016,-0.0324,-0.0008,0.0022,0.0051,-0.0146,-0.0114,-0.008,-0.0039,-0.0083,-0.0053,0.0324,-0.0042,-0.0059,0.0135,0.0188,0.004,0.0062,-0.002,-0.0078,-0.028,0.0011,-0.0201,0.03,0.0125,-0.0012,0.0064,0.0208,0.0254,-0.0247,-0.0363,-0.0109];
+
+        const bondPnls = [-0.0011,0.0045,0.0042,0.0137,-0.0069,-0.0035,-0.0019,0.0011,-0.0015,-0.0123,0.0112,-0.0058,0.0068,0.0061,0.0116,0.0023,0.0015,-0.0119,-0.0127,0.0131,0.0046,-0.0065,0.0069,0.0009,-0.004,-0.0093,0.0024,0.0043,-0.0015,-0.0052,0.0059,0.0039,0.0015,0.0091,0.0079,-0.001,-0.0137,-0.0054,-0.0093,0.0067,-0.0127,-0.0047,0.0072,0.0029,-0.015,-0.0002,-0.0044,-0.0102,0.0041,-0.0076,-0.0116,0.0021,0.0087,-0.0001,0.0092,-0.0053,0.0027,-0.0073,-0.0079,0.0024,0.0062,0.0076,0.0028,-0.0093,-0.0009,0.0092,-0.0003,-0.0066,0.0092,0.0082,0.0235,-0.0068,-0.0099,0.001,0.0026,-0.0108,0,-0.0125,0.0074,0.011,0.0012,-0.0108,-0.0014,0.0139,-0.0053,-0.0035,0.0067,-0.0006,-0.0117,-0.0091,-0.0084,0.0012,0.0106,-0.0022,-0.0063,0.0006,0.0071,0.0065,0.0065,0.0084,-0.022,-0.0079,0.0103,-0.0074,-0.0107,0.0075,-0.0049,0.0141,0.0008,-0.0024,0.0038,-0.0116,-0.0146,-0.0078,0.0006,0.0041,-0.0075,0.003,-0.0095,0.0128,0.0066,-0.0009,-0.0134,0.0034,0.0043,-0.0093,-0.0006,0.0018,0.0076,0.0044,0.0084,-0.0167,0.002,0.002,0.0098,0.0079,0.0017,-0.0044,0.009,-0.0031,-0.0116,-0.0107,-0.0068,-0.0097,-0.0009,-0.0179,-0.0057,-0.0012,0.0007,0.0049,-0.0021,0.0066,0.0042,0.0074,0.0017,-0.0036,0.0103,-0.0103,0.0009,-0.0042,-0.0067,-0.0015,0.0045,-0.0003,-0.0041,0.0091,0.0081,-0.0033,0.0112,0.0108,-0.0084,0.005,0.0035,-0.0047,-0.0027,0.0122,-0.001,0.0105,0.0046,-0.0012,-0.0108,0.0045,-0.0051,0.0008,-0.0037,-0.0015,-0.0062,0.0139,0.0023,-0.0047,-0.0075,0.0212,0.0035,0.0011,-0.0051,-0.002,0.0059,-0.0049,-0.0078,-0.0014,-0.002,-0.002,0.0038,0.0071,-0.0057,-0.0088,0.0065,-0.0057,-0.0084,-0.0003,0.0182,0.0059,0.0044,-0.0028,-0.0025,-0.0034,0.016,-0.0077,-0.0088,-0.0085,0.0097,0.005,0.0079,-0.0015,-0.0036,-0.0072,-0.0074,0.0025,0.0004,0.0103,-0.002,0.0168,0.0147,0.0094,-0.0074,-0.0029,-0.005,0.0098,0.0088,0.0068,0.0076,-0.0023,0.0077,-0.0018,-0.0063,0.0083,-0.0043,0.0021,-0.0014,-0.0006,-0.0181];
+
+        const fxPnls = [0.0065,-0.0198,0.0073,0.0061,0.0092,0,0.0059,0.0091,-0.008,-0.0192,-0.0198,-0.0073,-0.0042,0.0065,0.0065,-0.0072,0.0107,0.0059,0.0045,-0.0189,-0.0065,-0.0164,0.0164,-0.0044,-0.004,-0.0151,-0.0009,-0.0089,-0.0068,0.0046,0.0028,-0.025,0.0111,-0.0058,0.0168,-0.0005,0.0073,0.0093,0.0062,-0.0002,-0.0173,-0.001,-0.007,-0.0025,0.016,-0.0086,-0.0002,0.004,-0.0226,0.0041,-0.0018,0.0088,-0.0067,-0.0072,0.0093,0.0169,-0.0052,0.0117,0.0009,0.0111,-0.0062,0.0136,0.0184,-0.0059,-0.007,-0.0025,0.0032,0.0005,-0.0145,-0.0096,0.0078,0.01,0.0101,-0.0001,0.0119,-0.0004,0.0041,0.0031,0.0008,0.0152,0.0104,0.0085,0.0115,0.0047,-0.0016,-0.0049,0.007,-0.0021,-0.0238,0.0116,-0.0005,0.0009,-0.0042,-0.0117,0.0107,-0.0012,-0.0078,0.0008,-0.0048,0.0053,-0.0028,0.0111,-0.0009,0.0063,-0.0035,0.0038,-0.0146,0.002,-0.0247,0.0076,-0.0005,-0.0034,0.0064,0.0024,0.012,-0.001,0.0039,-0.0105,-0.0054,0.0068,0.0121,-0.0084,-0.0041,0.0124,-0.0026,0.0207,0.0014,0.0104,0.0006,0.0057,0.0008,0.0075,0.0062,-0.0098,0.007,-0.0059,0.0068,-0.0111,-0.0144,-0.0293,-0.0041,-0.0137,-0.0055,-0.02,0.0073,0.0158,-0.0156,-0.0066,-0.0105,-0.0282,-0.0009,0.0119,0.002,-0.0037,0.0162,0.0175,-0.0032,-0.0036,-0.0038,0.0121,0.0134,-0.0072,0.0082,0.0031,0.0015,-0.0064,0.0106,-0.0253,0.0055,-0.0026,-0.0048,0.009,0.0055,0.0131,-0.0057,-0.0099,-0.0089,-0.0014,0.0031,0.0085,0.0023,-0.0173,0.0096,0.0115,0.0088,0.0033,0.0124,-0.0159,0.0257,0.0084,0.0055,0,0.0164,0.0077,0.0019,0.0151,0.0207,-0.0185,-0.0099,0.0036,0.0064,-0.0076,0.0056,0.0095,-0.0041,0.0177,-0.0045,0.0061,0.0143,0.0164,0.0096,-0.0135,0.0201,0.0016,-0.0005,0.0177,0.0005,0.0041,-0.0004,-0.0054,0.0006,0.008,-0.0185,0.0102,0.0118,0.0214,0.007,0.0003,-0.0134,-0.0034,-0.0124,0.0137,0.0127,-0.0053,-0.0046,0.0063,-0.0057,-0.001,0.0074,0.0082,0.0071,-0.0165,0.0065,-0.0075,-0.0097,0.0055,0.0018,-0.0134,-0.0075,0.0166,-0.0392,-0.0195];
+
+        let histChart, sortedChart;
+
+        function updateSpans() {
+            document.getElementById('wStockVal').textContent = document.getElementById('wStock').value + '%';
+            document.getElementById('wBondVal').textContent = document.getElementById('wBond').value + '%';
+            document.getElementById('wFxVal').textContent = document.getElementById('wFx').value + '%';
+            document.getElementById('windowVal').textContent = document.getElementById('window').value;
+            const total = parseFloat(document.getElementById('wStock').value) + parseFloat(document.getElementById('wBond').value) + parseFloat(document.getElementById('wFx').value);
+            document.getElementById('totalWeight').textContent = `Total: ${total.toFixed(0)}% (normalized)`;
+        }
+
+        function compute() {
+            updateSpans();
+            const ws = parseFloat(document.getElementById('wStock').value);
+            const wb = parseFloat(document.getElementById('wBond').value);
+            const wf = parseFloat(document.getElementById('wFx').value);
+            const totalw = ws + wb + wf || 1;
+            const wstock = ws / totalw;
+            const wbond = wb / totalw;
+            const wfx = wf / totalw;
+            const win = parseInt(document.getElementById('window').value);
+            const confpct = parseInt(document.getElementById('conf').value);
+            const conf = confpct / 100;
+
+            const startIdx = 252 - win;
+            const pnls = [];
+            for (let i = startIdx; i < 252; i++) {
+                pnls.push(wstock * stockPnls[i] + wbond * bondPnls[i] + wfx * fxPnls[i]);
+            }
+            const n = pnls.length;
+            const sortedPnls = [...pnls].sort((a, b) => a - b);
+            const varIdx = Math.floor((1 - conf) * n);
+            const VaR = -sortedPnls[varIdx];
+            const tailPnls = sortedPnls.slice(0, varIdx + 1);
+            const ES = tailPnls.length > 0 ? -tailPnls.reduce((a, b) => a + b, 0) / tailPnls.length : 0;
+
+            const mean = pnls.reduce((a, b) => a + b, 0) / n;
+            const variance = pnls.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
+            const std = Math.sqrt(variance);
+
+            // Histogram
+            const minP = Math.min(...pnls);
+            const maxP = Math.max(...pnls);
+            const binSize = (maxP - minP) / 20 || 0.01;
+            const bins = new Array(20).fill(0);
+            pnls.forEach(p => {
+                let binIdx = Math.floor((p - minP) / binSize);
+                binIdx = Math.max(0, Math.min(19, binIdx));
+                bins[binIdx]++;
+            });
+            const binLabels = [];
+            for (let i = 0; i < 20; i++) {
+                const label = ((minP + i * binSize) * 100).toFixed(1);
+                binLabels.push(label);
+            }
+
+            if (histChart) histChart.destroy();
+            const histCtx = document.getElementById('histChart').getContext('2d');
+            histChart = new Chart(histCtx, {
+                type: 'bar',
+                data: {
+                    labels: binLabels,
+                    datasets: [{
+                        label: 'Frequency',
+                        data: bins,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Count' } },
+                        x: { title: { display: true, text: 'P&L %' } }
+                    }
+                }
+            });
+
+            // Sorted P&L
+            const sortedLabels = Array.from({length: n}, (_, i) => (i + 1).toString());
+            if (sortedChart) sortedChart.destroy();
+            const sortedCtx = document.getElementById('sortedChart').getContext('2d');
+            sortedChart = new Chart(sortedCtx, {
+                type: 'line',
+                data: {
+                    labels: sortedLabels,
+                    datasets: [{
+                        label: 'Sorted P&L (%)',
+                        data: sortedPnls.map(x => x * 100),
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        tension: 0.1
+                    }, {
+                        label: `VaR ${confpct}%`,
+                        data: Array(n).fill(VaR * 100),
+                        borderColor: 'rgb(53, 162, 235)',
+                        backgroundColor: 'rgba(53, 162, 235, 0.2)',
+                        borderDash: [10, 5],
+                        fill: false,
+                        tension: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { title: { display: true, text: 'P&L %' } },
+                        x: { title: { display: true, text: 'Rank' } }
+                    }
+                }
+            });
+
+            // Top 10 table
+            const indexedPnls = pnls.map((p, i) => ({ p, day: i - startIdx + 1 })).sort((a, b) => a.p - b.p);
+            let topHtml = '';
+            for (let j = 0; j < Math.min(10, indexedPnls.length); j++) {
+                topHtml += `<tr><td>Day ${indexedPnls[j].day}</td><td>${(indexedPnls[j].p * 100).toFixed(2)}</td></tr>`;
+            }
+            document.querySelector('#topTable tbody').innerHTML = topHtml;
+
+            // Stats table
+            const statsHtml = `
+                <tr><td>Mean</td><td>${(mean * 100).toFixed(2)}</td></tr>
+                <tr><td>Std Dev</td><td>${(std * 100).toFixed(2)}</td></tr>
+                <tr><td>VaR ${confpct}%</td><td>${(VaR * 100).toFixed(2)}</td></tr>
+                <tr><td>ES ${confpct}%</td><td>${(ES * 100).toFixed(2)}</td></tr>
+            `;
+            document.querySelector('#statsTable tbody').innerHTML = statsHtml;
+        }
+
+        // Event listeners
+        ['wStock', 'wBond', 'wFx', 'window', 'conf'].forEach(id => {
+            document.getElementById(id).addEventListener('input', compute);
+            document.getElementById(id).addEventListener('change', compute);
+        });
+
+        // Initial compute
+        compute();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</body>
+</html>
