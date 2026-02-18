@@ -129,7 +129,7 @@ canvas {
 </tbody>
 </table>
 
-<h3>Global Inputs ($mm)</h3>
+<h3>Global Inputs ($)</h3>
 <div class="global-inputs">
   <label>Net MTM (V): <input id="v" type="number" value="0" onchange="compute()"></label>
   <label>Threshold (Th): <input id="th" type="number" value="0" onchange="compute()"></label>
@@ -151,7 +151,7 @@ canvas {
 <tbody></tbody>
 </table>
 
-<h3>Results ($mm)</h3>
+<h3>Results ($)</h3>
 <p>Replacement Cost (RC): <strong id="rc">0</strong></p>
 <p>Potential Future Exposure AddOn = α × Σ(delta_i × MF × AddOn_i): <strong id="addon">0</strong></p>
 <p>EAD = RC + M × AddOn: <strong id="ead">0</strong></p>
@@ -246,7 +246,7 @@ function barChart(labels, data) {
     type: 'bar',
     data: {
       labels: labels,
-      datasets: [{ label: 'AddOn_i Sum ($mm)', data: data, backgroundColor: '#FFCE56' }]
+      datasets: [{ label: 'AddOn_i Sum ($)', data: data, backgroundColor: '#FFCE56' }]
     },
     options: { responsive: true, scales: { y: { beginAtZero: true } } }
   });
