@@ -17,7 +17,7 @@ function debounce(func, wait) {
   };
 }
 
-function calculateFVA() {
+function computeFVA() {
   const notional = parseFloat(document.getElementById('notional').value) || 100000000;
   const tenor = parseFloat(document.getElementById('tenor').value) || 5;
   const sigma_pct = parseFloat(document.getElementById('vol').value) || 20;
@@ -54,7 +54,7 @@ function calculateFVA() {
     }
     all_ee_paths.push(ee_path);
   }
-  let mean_ee_curve = new Array(num_steps + 1).fill(0);
+  console.log('FVA calc', all_ee_paths.length);\nlet mean_ee_curve = new Array(num_steps + 1).fill(0);
   let final_ee_raw = [];
   for (let t = 0; t <= num_steps; t++) {
     let slice = all_ee_paths.map(path => path[t]);
@@ -204,9 +204,9 @@ function calculateFVA() {
 }
 
 window.addEventListener('load', () => {
-  const debouncedCalc = debounce(calculateFVA, 500);
+  const debouncedCalc = debounce(computeFVA, 500);
   document.querySelectorAll('#fvaForm input').forEach(input => {
     input.addEventListener('input', debouncedCalc);
   });
-  setTimeout(calculateFVA, 200);
+  setTimeout(computeFVA, 200);
 });
