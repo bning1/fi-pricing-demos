@@ -90,23 +90,21 @@
 
         let histChart, sortedChart;
 
-        function histogram(data, nbins = 20) {
-            if (data.length === 0) {
-                return {labels: [], data: []};
-            }
-            const min = Math.min(...data);
-            const max = Math.max(...data);
-            const pnlRange = max - min;
-            if (pnlRange < 1e-6) pnlRange = 0.01;
-            const binWidth = pnlRange / nbins;
-            console.log('range/binWidth', pnlRange, binWidth);
-            const bins = new Array(nbins).fill(0);
+        function histogram(data) {
+            const min = -5;
+            const max = 5;
+            const nbins = 11;
+            const binWidth = 1;
+            const bins = new Array(11).fill(0);
             data.forEach(d => {
-                let idx = Math.floor((d - min) / binWidth) || 0;
-                if (idx > nbins - 1) idx = nbins - 1;
+                let dPct = d * 100;
+                let idx = Math.floor((dPct + 5) / binWidth);
+                idx = Math.max(0, Math.min(10, idx));
                 bins[idx]++;
             });
-            const labels = Array(nbins).fill().map((_,i) => binWidth === 0 ? '0%' : ((min + i*binWidth)*100).toFixed(2) + '%');
+            const labels = Array.from({length:11}, (_,i) => (i-5) + '%');
+            const sum = bins.reduce((a,b) => a + b, 0);
+            console.log('bin counts sum', sum, '== data.length', data.length);
             return {labels, data: bins};
         }
 
@@ -149,7 +147,7 @@
             const std = Math.sqrt(variance);
 
             // Histogram - robust binning
-            const histData = histogram(pnls, 25);
+            const histData = histogram(pnls);
             console.log('hist bins:', histData.data);
             console.log('hist labels/data length:', histData.labels.length, histData.data.length);
             console.log('data min/max', Math.min(...pnls), Math.max(...pnls), 'pnl sample', pnls.slice(0,5));
