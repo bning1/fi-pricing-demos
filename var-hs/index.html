@@ -107,6 +107,13 @@
         seed = (seed * 16807 + 0) % 2147483647;
         return seed / 2147483647;
       };
+    
+    function normalRandomSeeded(rand, mean = 0, std = 1) {
+      let u = 0, v = 0;
+      while (u === 0 || u === 1) u = rand();
+      while (v === 0) v = rand();
+      const num = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      return num * std + mean;
     }
     
     function generateReturns(nDays, seed = 42) {
@@ -116,11 +123,11 @@
       const fx = [];
       for (let i = 0; i < nDays; i++) {
         // Stock returns: ~0.02% mean, 1.5% std
-        const rs = (rand() - 0.5) * 0.03 + 0.0002;
+        const rs = normalRandomSeeded(rand, 0.0002, 0.015);
         // Yield changes: 0 mean, 10bp std
-        const dy = (rand() - 0.5) * 0.002;
+        const dy = normalRandomSeeded(rand, 0, 0.001);
         // FX returns: 0 mean, 0.8% std
-        const rfx = (rand() - 0.5) * 0.016;
+        const rfx = normalRandomSeeded(rand, 0, 0.008);
         stock.push(rs);
         yields.push(dy);
         fx.push(rfx);
@@ -176,6 +183,7 @@
         const pnl = Nstock * rs + Nbond * (-dur * dy) + Nfx * rfx;
         pnls.push(pnl);
       }
+      console.log('pnls.length:', pnls.length);
       pnls.sort((a, b) => a - b); // ascending, losses first
       const varIdx = Math.floor(win * 0.01);
       const varLoss = -pnls[varIdx];
@@ -260,8 +268,7 @@
     
     document.getElementById('computeBtn').onclick = computeVaR;
     
-    // Initial compute
-    computeVaR();
+    window.onload = computeVaR;
   </script>
 </body>
 </html>
