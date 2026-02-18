@@ -1,49 +1,92 @@
-function cumnorm(x) {
-  const b1 = 0.319381530;
-  const b2 = -0.356563782;
-  const b3 = 1.781477937;
-  const b4 = -1.821255978;
-  const b5 = 1.330274429;
-  const p = 0.2316419;
-  const c = 0.39894228;
-  if (x &gt;= 0.0) {
-    let t = 1.0 / (1.0 + p * x);
-    return (1.0 - c * Math.exp(-x * x / 2.0) * t *
-      (t * (t * (t * (t * b5 + b4) + b3) + b2) + b1));
-  } else {
-    let t = 1.0 / (1.0 - p * x);
-    return (c * Math.exp(-x * x / 2.0) * t *
-      (t * (t * (t * (t * b5 + b4) + b3) + b2) + b1));
+// Black76 Normal CDF approximation (Abramowitz & Stegun)
+function normcdf(x) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.39894228 * Math.exp(-0.5 * x * x);
+  let prob = d * t * (0.31938153 - t * (0.356563782 + t * (1.781477937 - t * (1.821255978 - t * 1.330274429))));
+  if (x &gt; 0) {
+    prob = 1 - prob;
   }
+  return prob;
 }
 
-function calculate() {
-  const F = parseFloat(document.getElementById('F').value);
-  const K = parseFloat(document.getElementById('K').value);
-  const sigma = parseFloat(document.getElementById('sigma').value);
+// Black76 Call price
+function black76Call(F, K, sigma, T) {
+  if (T &lt;= 0) return Math.max(F - K, 0);
+  const sigsqrtT = sigma * Math.sqrt(T);
+  const d1 = (Math.log(F / K) + 0.5 * sigsqrtT * sigsqrtT) / sigsqrtT;
+  const d2 = d1 - sigsqrtT;
+  return F * normcdf(d1) - K * normcdf(d2);
+}
+
+// Black76 Put price
+function black76Put(F, K, sigma, T) {
+  if (T &lt;= 0) return Math.max(K - F, 0);
+  const sigsqrtT = sigma * Math.sqrt(T);
+  const d1 = (Math.log(F / K) + 0.5 * sigsqrtT * sigsqrtT) / sigsqrtT;
+  const d2 = d1 - sigsqrtT;
+  return K * normcdf(-d2) - F * normcdf(-d1);
+}
+
+function compute() {
+  const N = parseFloat(document.getElementById('notional').value) || 0;
+  const Kp = parseFloat(document.getElementById('strike').value);
+  const Fp = parseFloat(document.getElementById('forward').value);
+  const sigmap = parseFloat(document.getElementById('vol').value);
   const T = parseFloat(document.getElementById('T').value);
-  const DF = parseFloat(document.getElementById('DF').value);
-  const Notional = parseFloat(document.getElementById('Notional').value);
   const tau = parseFloat(document.getElementById('tau').value);
+  const df = parseFloat(document.getElementById('df').value);
 
-  if (isNaN(F) || isNaN(K) || isNaN(sigma) || isNaN(T) || isNaN(DF) || isNaN(Notional) || isNaN(tau) || T &lt;= 0 || sigma &lt;= 0 || F &lt;= 0 || K &lt;= 0) {
-    document.getElementById('result').innerHTML = '&lt;p style="color: red;"&gt;Invalid inputs. Ensure all values are positive numbers, T&gt;0, sigma&gt;0.&lt;/p&gt;';
-    return;
-  }
+  const K = Kp / 100;
+  const F = Fp / 100;
+  const sigma = sigmap / 100;
 
-  const sqrtT = Math.sqrt(T);
-  const d1 = (Math.log(F / K) + 0.5 * sigma * sigma * T) / (sigma * sqrtT);
-  const d2 = d1 - sigma * sqrtT;
+  const sigsqrtT = sigma * Math.sqrt(T);
+  const d1 = sigsqrtT &gt; 0 ? (Math.log(F / K) + 0.5 * sigsqrtT * sigsqrtT) / sigsqrtT : 0;
+  const d2 = d1 - sigsqrtT;
 
-  const caplet = DF * (F * cumnorm(d1) - K * cumnorm(d2)) * Notional * tau;
-  const floorlet = DF * (K * cumnorm(-d2) - F * cumnorm(-d1)) * Notional * tau;
+  const Nd1 = normcdf(d1);
+  const Nd2 = normcdf(d2);
 
-  document.getElementById('result').innerHTML = `
-    &lt;p&gt;&lt;strong&gt;Caplet Price: $${caplet.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+  const capletUndisc = black76Call(F, K, sigma, T);
+  const floorletUndisc = black76Put(F, K, sigma, T);
+  const caplet = N * tau * df * capletUndisc;
+  const floorlet = N * tau * df * floorletUndisc;
 
-&lt;/strong&gt;&lt;/p&gt;
-    &lt;p&gt;&lt;strong&gt;Floorlet Price: $${floorlet.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-
-&lt;/strong&gt;&lt;/p&gt;
-  `;
+  document.getElementById('caplet').textContent = '$' + caplet.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+  document.getElementById('floorlet').textContent = '$' + floorlet.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+  document.getElementById('d1').textContent = d1.toFixed(4);
+  document.getElementById('d2').textContent = d2.toFixed(4);
+  document.getElementById('Nd1').textContent = Nd1.toFixed(4);
+  document.getElementById('Nd2').textContent = Nd2.toFixed(4);
 }
+
+// Update value displays and compute
+function updateSlider(sliderId, valId) {
+  const slider = document.getElementById(sliderId);
+  const valSpan = document.getElementById(valId);
+  slider.addEventListener('input', function() {
+    const val = parseFloat(this.value);
+    if (valId === 'strikeVal') {
+      valSpan.textContent = val.toFixed(2);
+    } else if (valId === 'forwardVal' || valId === 'volVal') {
+      valSpan.textContent = val.toFixed(1);
+    } else if (valId === 'tauVal' || valId === 'dfVal') {
+      valSpan.textContent = val.toFixed(2);
+    } else {
+      valSpan.textContent = val.toFixed(2);
+    }
+    compute();
+  });
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('notional').addEventListener('input', compute);
+  updateSlider('strike', 'strikeVal');
+  updateSlider('forward', 'forwardVal');
+  updateSlider('vol', 'volVal');
+  updateSlider('T', 'TVal');
+  updateSlider('tau', 'tauVal');
+  updateSlider('df', 'dfVal');
+  compute();
+});
