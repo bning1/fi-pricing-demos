@@ -101,8 +101,8 @@
                 bins[idx]++;
             });
             const labels = bins.map((_, i) => {
-                const mid = min + (i + 0.5) * binWidth;
-                return (mid * 100).toFixed(1) + '%';
+                const low = min + i * binWidth;
+                return (low * 100).toFixed(1) + '%';
             });
             return {labels, data: bins};
         }
@@ -146,8 +146,9 @@
             const std = Math.sqrt(variance);
 
             // Histogram - robust binning
-            const histData = histogram(pnls, 20);
+            const histData = histogram(pnls, 25);
             console.log('hist bins:', histData.data);
+            console.log('hist labels/data length:', histData.labels.length, histData.data.length);
             console.log('pnls range:', Math.min(...pnls), 'to', Math.max(...pnls));
 
             if (histChart) histChart.destroy();
