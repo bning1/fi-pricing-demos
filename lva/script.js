@@ -18,6 +18,7 @@ function debounce(func, wait) {
 }
 
 function computeLVA() {
+  console.trace();
   const notional = parseFloat(document.getElementById('notional').value) || 100000000;
   const tenor = parseFloat(document.getElementById('tenor').value) || 5;
   const sigma_pct = parseFloat(document.getElementById('vol').value) || 20;
@@ -241,4 +242,4 @@ window.addEventListener('load', () => {
     input.addEventListener('input', debouncedCalc);
   });
   setTimeout(computeLVA, 200);
-});
+});window.computeLVA = computeLVA;
