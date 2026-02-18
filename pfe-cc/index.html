@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PFE (CC Risk) Demo</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>Potential Future Exposure (PFE) - CC Risk MC Demo</h1>
+  <p>Simplified Monte Carlo for swap-like forward exposures. Risk factor X(t) ~ GBM(μ, σ), MTM(t) = Notional × (X(t) - 1), EE(t) = max(0, MTM(t)). Daily steps (252/yr). No collateral/netting.</p>
+  <form id="pfeForm">
+    <div class="inputs-grid">
+      <div class="input-group">
+        <label for="notional">Notional ($):</label>
+        <input type="number" id="notional" value="100000000" min="0" step="1000000">
+      </div>
+      <div class="input-group">
+        <label for="tenor">Tenor (yrs):</label>
+        <input type="number" id="tenor" value="5" min="0.1" step="0.25">
+      </div>
+      <div class="input-group">
+        <label for="vol">Risk Factor Vol σ (%):</label>
+        <input type="number" id="vol" value="20" min="0" step="0.1">
+      </div>
+      <div class="input-group">
+        <label for="drift">Drift μ (%):</label>
+        <input type="number" id="drift" value="0" min="-20" step="0.1">
+      </div>
+      <div class="input-group">
+        <label for="nsims">Num Paths:</label>
+        <input type="number" id="nsims" value="5000" min="100" max="20000" step="500">
+      </div>
+      <div class="input-group">
+        <label for="conf">Conf Level (%):</label>
+        <input type="number" id="conf" value="95" min="50" max="99.9" step="0.1">
+      </div>
+    </div>
+    <button type="button" onclick="calculatePFE()">Run MC</button>
+  </form>
+  <div id="results"></div>
+  <script src="script.js"></script>
+</body>
+</html>
