@@ -17,7 +17,7 @@ function debounce(func, wait) {
   };
 }
 
-function calculateLVA() {
+function computeLVA() {
   const notional = parseFloat(document.getElementById('notional').value) || 100000000;
   const tenor = parseFloat(document.getElementById('tenor').value) || 5;
   const sigma_pct = parseFloat(document.getElementById('vol').value) || 20;
@@ -59,6 +59,7 @@ function calculateLVA() {
     }
     all_ee_paths.push(ee_path);
   }
+    console.log('LVA paths', all_ee_paths.length);
   let mean_ee_curve = new Array(num_steps + 1).fill(0);
   let final_ee_raw = [];
   for (let t = 0; t &lt;= num_steps; t++) {
@@ -235,9 +236,9 @@ function calculateLVA() {
 }
 
 window.addEventListener('load', () => {
-  const debouncedCalc = debounce(calculateLVA, 500);
+  const debouncedCalc = debounce(computeLVA, 500);
   document.querySelectorAll('#lvaForm input').forEach(input => {
     input.addEventListener('input', debouncedCalc);
   });
-  setTimeout(calculateLVA, 200);
+  setTimeout(computeLVA, 200);
 });
