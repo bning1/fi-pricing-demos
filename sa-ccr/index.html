@@ -1,304 +1,83 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>SA-CCR Demo</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-body {
-  font-family: sans-serif;
-  max-width: 1200px;
-  margin: auto;
-  padding: 2rem;
-  line-height: 1.6;
-  background: linear-gradient(to bottom, #f8f9fa, #e2e8f0);
-}
-h1 {
-  color: #1a365d;
-  text-align: center;
-}
-h2, h3 {
-  color: #2d3748;
-  margin-top: 2rem;
-  border-bottom: 3px solid #4299e1;
-  padding-bottom: 0.5rem;
-}
-.global-inputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin: 1rem 0;
-}
-label {
-  display: flex;
-  flex-direction: column;
-  font-weight: 500;
-  color: #4a5568;
-}
-input, select {
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 1rem;
-  margin-top: 0.25rem;
-  transition: border-color 0.2s;
-}
-input:focus, select:focus {
-  outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 3px rgba(66,153,225,0.1);
-}
-button {
-  background: linear-gradient(135deg, #4299e1, #3182ce);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s;
-  margin: 0.25rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(66,153,225,0.4);
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1.5rem 0;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-}
-th, td {
-  padding: 1.25rem;
-  text-align: left;
-  border-bottom: 1px solid #e2e8f0;
-}
-th {
-  background: linear-gradient(135deg, #4299e1, #3182ce);
-  color: white;
-  font-weight: 600;
-}
-#formulas {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  margin: 1.5rem 0;
-}
-strong {
-  color: #2d3748;
-}
-canvas {
-  display: block;
-  margin: 1rem auto;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  border-radius: 12px;
-  max-width: 100%;
-  height: auto;
-}
-@media (max-width: 768px) {
-  body {
-    padding: 1rem;
-  }
-  .global-inputs {
-    grid-template-columns: 1fr;
-  }
-  table {
-    font-size: 0.9rem;
-  }
-  th, td {
-    padding: 1rem 0.75rem;
-  }
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SA-CCR (New) Demo</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<h1>SA-CCR | Standardised CCR EAD calc</h1>
-
-<h3>Supervisory Factors Table (MF %)</h3>
-<table id="factors">
-<thead><tr><th>Asset Class</th><th>MF</th></tr></thead>
-<tbody>
-<tr><td>IR</td><td>0.5</td></tr>
-<tr><td>FX</td><td>4</td></tr>
-<tr><td>Equity</td><td>32</td></tr>
-</tbody>
-</table>
-
-<h3>Global Inputs ($)</h3>
-<div class="global-inputs">
-  <label>Net MTM (V): <input id="v" type="number" value="0" min="-1000000" step="1" max="1000000" onchange="compute()"></label>
-  <label>Threshold (Th): <input id="th" type="number" value="0" onchange="compute()"></label>
-  <label>Collateral (C): <input id="c" type="number" value="0" onchange="compute()"></label>
-  <label>Margin Period Multiplier M: <input id="m" type="number" step="0.01" value="1.0" onchange="compute()"></label>
-</div>
-<p>Alpha: <strong>1.4</strong> (fixed)</p>
-
-<h3>Interactive Portfolio</h3>
-<button onclick="addTrade()">Add Trade</button>
-<table id="trades">
-<thead><tr><th>Name</th><th>Asset Class</th><th>Notional</th><th>Maturity (y)</th><th>Delta</th><th>Action</th></tr></thead>
-<tbody></tbody>
-</table>
-
-<h3>Per Trade AddOn Breakdown</h3>
-<table id="breakdown">
-<thead><tr><th>Name</th><th>Asset</th><th>Notional</th><th>Mat</th><th>Delta</th><th>Mat Factor</th><th>AddOn_i</th></tr></thead>
-<tbody></tbody>
-</table>
-
-<h3>Results ($)</h3>
-<p>Replacement Cost (RC): <strong id="rc">0</strong></p>
-<p>Potential Future Exposure AddOn = α × Σ(delta_i × MF × AddOn_i): <strong id="addon">0</strong></p>
-<p>EAD = RC + M × AddOn: <strong id="ead">0</strong></p>
-
-<h3>Full Formulas Step-by-Step</h3>
-<div id="formulas"></div>
-
-<h3>Charts</h3>
-<div>
-EAD Components (Pie): <canvas id="pieChart" width="300" height="300"></canvas>
-</div>
-<div>
-AddOn Sensitivity by Asset (Bar): <canvas id="sensitivity" width="400" height="200"></canvas>
-</div>
-
-<script>
-let trades = [
-  {name: 'IR Swap', asset: 'IR', notional: 100, mat: 10, delta: 1},
-  {name: 'FX Swap', asset: 'FX', notional: 50, mat: 2, delta: 1},
-  {name: 'IR Option', asset: 'IR', notional: 20, mat: 1, delta: 0.5},
-  {name: 'Equity Option', asset: 'Equity', notional: 10, mat: 3, delta: 0.6}
-];
-
-const factors = {IR: 0.005, FX: 0.04, Equity: 0.32};
-const alpha = 1.4;
-
-function matFactor(asset, mat) {
-  if (asset !== 'IR') return 1;
-  return Math.sqrt(Math.min(mat / 5, 1));
-}
-
-function compute() {
-  let sumAddonI = 0;
-  let breakdown = '';
-  let assetSums = {};
-  trades.forEach((t, i) => {
-    let mf = matFactor(t.asset, t.mat);
-    let addoni = t.delta * factors[t.asset] * mf * t.notional;
-    sumAddonI += addoni;
-    breakdown += `<tr><td>${t.name}</td><td>${t.asset}</td><td>${t.notional.toFixed(0)}</td><td>${t.mat}</td><td>${t.delta}</td><td>${mf.toFixed(3)}</td><td>${addoni.toFixed(2)}</td></tr>`;
-    if (!assetSums[t.asset]) assetSums[t.asset] = 0;
-    assetSums[t.asset] += addoni;
-  });
-  let addon = alpha * sumAddonI;
-  let v = parseFloat((document.getElementById('v').value || '').replace(/,/g, '')) || 0;
-  let th = parseFloat((document.getElementById('th').value || '').replace(/,/g, '')) || 0;
-  let c = parseFloat((document.getElementById('c').value || '').replace(/,/g, '')) || 0;
-  let m = parseFloat((document.getElementById('m').value || '').replace(/,/g, '')) || 1;
-  let rc = Math.max(v - c, 0) + Math.max(th - c, 0);
-  let ead = rc + m * addon;
-  document.getElementById('rc').innerText = rc.toFixed(2);
-  document.getElementById('addon').innerText = addon.toFixed(2);
-  document.getElementById('ead').innerText = ead.toFixed(2);
-  document.getElementById('breakdown').querySelector('tbody').innerHTML = breakdown;
-
-  // Formulas
-  document.getElementById('formulas').innerHTML = `
-    <p><strong>RC = max(V - C, 0) + max(Th - C, 0) = ${rc.toFixed(2)}</strong></p>
-    <p><strong>For trade i: AddOn_i = δ_i × MF × MatFactor_i × Notional_i</strong></p>
-    <ul>
-    <li>MatFactor (IR) = √(min(Maturity/5, 1)); FX/Equity = 1</li>
-    <li>MF (Supervisory Factor): IR=0.5%, FX=4%, Equity=32%</li>
-    </ul>
-    <p><strong>AddOn = α × Σ AddOn_i = ${addon.toFixed(2)} (α=1.4)</strong></p>
-    <p><strong>EAD = RC + M × AddOn = ${ead.toFixed(2)}</strong></p>
-  `;
-
-  // Charts
-  pieChart();
-  barChart(Object.keys(assetSums), Object.values(assetSums));
-}
-
-function pieChart() {
-  let rc = parseFloat(document.getElementById('rc').innerText);
-  let addon = parseFloat(document.getElementById('addon').innerText);
-  let ctx = document.getElementById('pieChart').getContext('2d');
-  if (window.pieChartInstance) window.pieChartInstance.destroy();
-  window.pieChartInstance = new Chart(ctx, {
-    type: 'pie',
-    data: {
-      labels: ['RC', 'AddOn'],
-      datasets: [{ data: [rc, addon], backgroundColor: ['#FF6384', '#36A2EB'] }]
-    },
-    options: { responsive: true }
-  });
-}
-
-function barChart(labels, data) {
-  let ctx = document.getElementById('sensitivity').getContext('2d');
-  if (window.barChartInstance) window.barChartInstance.destroy();
-  window.barChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{ label: 'AddOn_i Sum ($)', data: data, backgroundColor: '#FFCE56' }]
-    },
-    options: { responsive: true, scales: { y: { beginAtZero: true } } }
-  });
-}
-
-function renderTrades() {
-  let tbody = document.querySelector('#trades tbody');
-  tbody.innerHTML = '';
-  trades.forEach((t, i) => {
-    let row = document.createElement('tr');
-    row.innerHTML = `
-      <td><input value="${t.name}" onchange="updateTrade(${i}, 'name', this.value); compute()"></td>
-      <td>
-        <select onchange="updateTrade(${i}, 'asset', this.value); compute()">
-          <option ${t.asset === 'IR' ? 'selected' : ''}>IR</option>
-          <option ${t.asset === 'FX' ? 'selected' : ''}>FX</option>
-          <option ${t.asset === 'Equity' ? 'selected' : ''}>Equity</option>
-        </select>
-      </td>
-      <td><input type="number" value="${t.notional}" onchange="updateTrade(${i}, 'notional', parseFloat((this.value || '').replace(/,/g, ''))); compute()"></td>
-      <td><input type="number" step="0.1" value="${t.mat}" onchange="updateTrade(${i}, 'mat', parseFloat((this.value || '').replace(/,/g, ''))); compute()"></td>
-      <td><input type="number" step="0.01" min="0" max="1" value="${t.delta}" onchange="updateTrade(${i}, 'delta', parseFloat((this.value || '').replace(/,/g, ''))); compute()"></td>
-      <td><button onclick="deleteTrade(${i})">Delete</button></td>
-    `;
-    tbody.appendChild(row);
-  });
-  compute();
-}
-
-function updateTrade(i, prop, val) {
-  trades[i][prop] = val;
-}
-
-function addTrade() {
-  trades.push({name: 'New Trade', asset: 'IR', notional: 10, mat: 1, delta: 1});
-  renderTrades();
-}
-
-function deleteTrade(i) {
-  trades.splice(i, 1);
-  renderTrades();
-}
-
-document.addEventListener('input', (e) => {
-  if (e.target.matches('input[type="number"]')) {
-    const value = e.target.value.replace(/,/g, '');
-    const num = parseFloat(value) || 0;
-    e.target.value = num.toLocaleString('en-US');
-  }
-});
-
-window.onload = renderTrades;
-</script>
+  <h1>SA-CCR (New) Demo</h1>
+  <p>Simplified deterministic SA-CCR EAD for portfolio trades. AddOn_i = |δ| × MF(T) × SF × Notional, MF=√min(T/5,1). No hedging sets/buckets/correlations/adjusted N. Full formulas shown below.</p>
+  <form id="saForm">
+    <div class="inputs-grid">
+      <div class="input-group">
+        <label for="rc">Replacement Cost RC ($M):</label>
+        <input type="number" id="rc" value="10" step="1" min="-1000">
+      </div>
+      <div class="input-group">
+        <label for="threshold">Threshold Th ($M):</label>
+        <input type="number" id="threshold" value="50" step="1" min="0">
+      </div>
+      <div class="input-group">
+        <label for="floorPct">Floor (%):</label>
+        <input type="number" id="floorPct" value="0" min="0" max="5" step="0.1">
+      </div>
+    </div>
+    <h3>Editable Portfolio</h3>
+    <table id="portfolioTable">
+      <thead>
+        <tr>
+          <th>Asset Class</th>
+          <th>Notional ($M)</th>
+          <th>Maturity T (yr)</th>
+          <th>Delta δ</th>
+          <th>AddOn ($M)</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><select><option>IR</option><option selected>FX</option><option>Credit</option><option>Equity</option><option>Commodity</option></select></td>
+          <td><input type="number" value="200" min="0" step="10"></td>
+          <td><input type="number" value="2" min="0" step="0.25"></td>
+          <td><input type="number" value="0.8" min="-1" max="1" step="0.01"></td>
+          <td class="addon">-</td>
+          <td><button type="button" class="del-btn">Delete</button></td>
+        </tr>
+        <tr>
+          <td><select><option>IR</option><option>FX</option><option>Credit</option><option selected>Equity</option><option>Commodity</option></select></td>
+          <td><input type="number" value="100" min="0" step="10"></td>
+          <td><input type="number" value="1" min="0" step="0.25"></td>
+          <td><input type="number" value="1" min="-1" max="1" step="0.01"></td>
+          <td class="addon">-</td>
+          <td><button type="button" class="del-btn">Delete</button></td>
+        </tr>
+        <tr>
+          <td><select><option>IR</option><option>FX</option><option selected>Credit</option><option>Equity</option><option>Commodity</option></select></td>
+          <td><input type="number" value="300" min="0" step="10"></td>
+          <td><input type="number" value="5" min="0" step="0.25"></td>
+          <td><input type="number" value="-0.5" min="-1" max="1" step="0.01"></td>
+          <td class="addon">-</td>
+          <td><button type="button" class="del-btn">Delete</button></td>
+        </tr>
+        <tr>
+          <td><select><option selected>IR</option><option>FX</option><option>Credit</option><option>Equity</option><option>Commodity</option></select></td>
+          <td><input type="number" value="150" min="0" step="10"></td>
+          <td><input type="number" value="10" min="0" step="0.25"></td>
+          <td><input type="number" value="1" min="-1" max="1" step="0.01"></td>
+          <td class="addon">-</td>
+          <td><button type="button" class="del-btn">Delete</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="table-actions">
+      <button type="button" onclick="addRow()">+ Add Trade</button>
+      <button type="button" onclick="clearPortfolio()">Clear Portfolio</button>
+    </div>
+  </form>
+  <div id="results"></div>
+  <script src="script.js"></script>
 </body>
 </html>
