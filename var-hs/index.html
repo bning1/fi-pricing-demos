@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VaR HS (99%) | FI Pricing Demos</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js"></script>
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+      max-width: 1200px; margin: 0 auto; padding: 2rem; 
+      line-height: 1.6; 
+      background: linear-gradient(to bottom, #f8f9fa, #e2e8f0); 
+    }
+    h1 { color: #1a365d; text-align: center; }
+    p.intro { text-align: center; max-width: 600px; margin: 0 auto 3rem; color: #4a5568; }
+    table#controls { 
+      width: 100%; border-collapse: collapse; margin: 2rem 0; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+      background: white; border-radius: 12px; overflow: hidden; 
+    }
+    table#controls th, table#controls td { padding: 1.25rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    table#controls th { background: linear-gradient(135deg, #4299e1, #3182ce); color: white; font-weight: 600; }
+    input[type="range"] { width: 60%; margin-right: 1rem; }
+    #computeBtn { 
+      display: block; margin: 2rem auto; padding: 1rem 2rem; 
+      background: linear-gradient(135deg, #4299e1, #3182ce); 
+      color: white; border: none; border-radius: 6px; font-size: 1.1rem; 
+      font-weight: 500; cursor: pointer; transition: all 0.2s; 
+    }
+    #computeBtn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(66,153,225,0.4); }
+    #results { 
+      text-align: center; font-size: 1.4rem; font-weight: 600; 
+      color: #1a365d; margin: 2rem 0; padding: 1.5rem; 
+      background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    }
+    .charts { 
+      display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; 
+    }
+    .chart-container { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .chart-title { text-align: center; color: #1a365d; margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600; }
+    p.note { text-align: center; margin-top: 3rem; color: #718096; font-style: italic; }
+    @media (max-width: 768px) { 
+      .charts { grid-template-columns: 1fr; } 
+      input[type="range"] { width: 50%; } 
+      table#controls { font-size: 0.9rem; } 
+      table#controls th, table#controls td { padding: 0.75rem; } 
+    }
+  </style>
+</head>
+<body>
+  <h1>VaR Historical Simulation (99%)</h1>
+  <p class="intro">252 historical scenarios → P&amp;L distribution → 99% VaR (1% worst loss).</p>
+  
+  <table id="controls">
+    <thead>
+      <tr>
+        <th>Parameter</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Stock Notional ($M)</td>
+        <td><input type="range" id="stockNot" min="0" max="100" value="33" step="1"><span id="stockVal">33</span></td>
+      </tr>
+      <tr>
+        <td>Bond Notional ($M)</td>
+        <td><input type="range" id="bondNot" min="0" max="100" value="33" step="1"><span id="bondVal">33</span></td>
+      </tr>
+      <tr>
+        <td>FX Notional ($M)</td>
+        <td><input type="range" id="fxNot" min="0" max="100" value="34" step="1"><span id="fxVal">34</span></td>
+      </tr>
+      <tr>
+        <td>Bond Duration (years)</td>
+        <td><input type="range" id="duration" min="1" max="30" value="5" step="0.1"><span id="durVal">5.0</span></td>
+      </tr>
+      <tr>
+        <td>Historical Window (days)</td>
+        <td><input type="range" id="windowDays" min="100" max="500" value="252" step="1"><span id="winVal">252</span></td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <button id="computeBtn">Compute VaR</button>
+  
+  <div id="results"></div>
+  
+  <div class="charts">
+    <div class="chart-container">
+      <div class="chart-title">P&amp;L Histogram</div>
+      <canvas id="histChart"></canvas>
+    </div>
+    <div class="chart-container">
+      <div class="chart-title">Sorted P&amp;L Scenarios</div>
+      <canvas id="sortedChart"></canvas>
+    </div>
+  </div>
+  
+  <p class="note">Synthetic historical data: Stock (1.5% daily vol), Bond yields (10bp vol), FX (0.8% vol). Simplified P&amp;L: Stock/FX = return, Bond = -dur × Δyield.</p>
+  
+  <script>
+    // Seeded random for reproducible data
+    function seededRandom(seed = 42) {
+      return function() {
+        seed = (seed * 16807 + 0) % 2147483647;
+        return seed / 2147483647;
+      };
+    }
+    
+    function generateReturns(nDays, seed = 42) {
+      const rand = seededRandom(seed);
+      const stock = [];
+      const yields = [];
+      const fx = [];
+      for (let i = 0; i < nDays; i++) {
+        // Stock returns: ~0.02% mean, 1.5% std
+        const rs = (rand() - 0.5) * 0.03 + 0.0002;
+        // Yield changes: 0 mean, 10bp std
+        const dy = (rand() - 0.5) * 0.002;
+        // FX returns: 0 mean, 0.8% std
+        const rfx = (rand() - 0.5) * 0.016;
+        stock.push(rs);
+        yields.push(dy);
+        fx.push(rfx);
+      }
+      return { stock, yield: yields, fx };
+    }
+    
+    const data = generateReturns(500);
+    
+    // Update slider values
+    const sliders = ['stockNot', 'bondNot', 'fxNot', 'windowDays'];
+    sliders.forEach(id => {
+      const slider = document.getElementById(id);
+      const valSpan = document.getElementById(id + 'Val');
+      slider.oninput = () => { valSpan.textContent = slider.value; };
+    });
+    const durationSlider = document.getElementById('duration');
+    const durVal = document.getElementById('durVal');
+    durationSlider.oninput = () => { durVal.textContent = parseFloat(durationSlider.value).toFixed(1); };
+    
+    // Histogram helper
+    function histogram(values, numBins = 25) {
+      const minVal = Math.min(...values);
+      const maxVal = Math.max(...values);
+      const binSize = (maxVal - minVal) / numBins;
+      const bins = new Array(numBins).fill(0);
+      for (const value of values) {
+        let binIndex = Math.min(numBins - 1, Math.floor((value - minVal) / binSize));
+        bins[binIndex]++;
+      }
+      const labels = bins.map((_, i) => {
+        const start = minVal + i * binSize;
+        const end = start + binSize;
+        return `${start.toFixed(1)}% – ${end.toFixed(1)}%`;
+      });
+      return { labels, data: bins };
+    }
+    
+    // Compute function
+    function computeVaR() {
+      const Nstock = parseFloat(document.getElementById('stockNot').value) * 1e6;
+      const Nbond = parseFloat(document.getElementById('bondNot').value) * 1e6;
+      const Nfx = parseFloat(document.getElementById('fxNot').value) * 1e6;
+      const dur = parseFloat(document.getElementById('duration').value);
+      const win = parseInt(document.getElementById('windowDays').value);
+      
+      const portValue = Nstock + Nbond + Nfx;
+      const pnls = [];
+      for (let i = 0; i < win; i++) {
+        const rs = data.stock[i];
+        const dy = data.yield[i];
+        const rfx = data.fx[i];
+        const pnl = Nstock * rs + Nbond * (-dur * dy) + Nfx * rfx;
+        pnls.push(pnl);
+      }
+      pnls.sort((a, b) => a - b); // ascending, losses first
+      const varIdx = Math.floor(win * 0.01);
+      const varLoss = -pnls[varIdx];
+      const varPct = (varLoss / portValue * 100).toFixed(2);
+      const varAbs = (varLoss / 1e6).toFixed(1);
+      const portM = (portValue / 1e6).toFixed(1);
+      
+      document.getElementById('results').innerHTML = 
+        `Portfolio: <strong>$${portM}M</strong> | 99% VaR: <strong>$${varAbs}M (${varPct}%)</strong>`;
+      
+      const pnlPct = pnls.map(p => p / portValue * 100);
+      const varPctNum = pnlPct[varIdx];
+      
+      // Histogram
+      const histCtx = document.getElementById('histChart').getContext('2d');
+      if (window.histChart) window.histChart.destroy();
+      const hData = histogram(pnlPct, 25);
+      window.histChart = new Chart(histCtx, {
+        type: 'bar',
+        data: {
+          labels: hData.labels,
+          datasets: [{
+            label: 'P&amp;L %',
+            data: hData.data,
+            backgroundColor: 'rgba(66, 153, 225, 0.7)',
+            borderColor: 'rgba(66, 153, 225, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'Daily P&amp;L %' } },
+            y: { beginAtZero: true, title: { display: true, text: 'Frequency' } }
+          }
+        }
+      });
+      
+      // Sorted P&amp;L
+      const sortedCtx = document.getElementById('sortedChart').getContext('2d');
+      if (window.sortedChart) window.sortedChart.destroy();
+      const scenarioLabels = Array.from({ length: win }, (_, i) => i + 1);
+      window.sortedChart = new Chart(sortedCtx, {
+        type: 'line',
+        data: {
+          labels: scenarioLabels,
+          datasets: [
+            {
+              label: 'Sorted P&amp;L %',
+              data: pnlPct,
+              borderColor: 'rgb(75, 192, 192)',
+              backgroundColor: 'rgba(75, 192, 192, 0.1)',
+              tension: 0.1,
+              fill: false,
+              pointRadius: 0
+            },
+            {
+              label: `99% VaR (${varPct}%)`,
+              data: Array(win).fill(varPctNum),
+              borderColor: '#e53e3e',
+              backgroundColor: 'rgba(229, 62, 62, 0.1)',
+              borderDash: [10, 5],
+              tension: 0,
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: 'Scenario Rank (1 = worst loss)' } },
+            y: { title: { display: true, text: 'P&amp;L %' } }
+          },
+          interaction: { intersect: false },
+          plugins: { legend: { display: true } }
+        }
+      });
+    }
+    
+    document.getElementById('computeBtn').onclick = computeVaR;
+    
+    // Initial compute
+    computeVaR();
+  </script>
+</body>
+</html>
