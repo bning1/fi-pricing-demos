@@ -93,16 +93,16 @@
         function histogram(data) {
             const min = -5;
             const max = 5;
-            const nbins = 11;
-            const binWidth = 1;
-            const bins = new Array(11).fill(0);
+            const nbins = 22;
+            const binWidth = 10 / 22; // 0.4545% ~0.5
+            const bins = new Array(nbins).fill(0);
             data.forEach(d => {
                 let dPct = d * 100;
                 let idx = Math.floor((dPct + 5) / binWidth);
-                idx = Math.max(0, Math.min(10, idx));
+                idx = Math.max(0, Math.min(nbins - 1, idx));
                 bins[idx]++;
             });
-            const labels = Array.from({length:11}, (_,i) => (i-5) + '%');
+            const labels = Array(nbins).fill().map((_,i) => ((-5 + i * binWidth).toFixed(1)) + '%');
             const sum = bins.reduce((a,b) => a + b, 0);
             console.log('bin counts sum', sum, '== data.length', data.length);
             return {labels, data: bins};
@@ -172,8 +172,8 @@
                     maintainAspectRatio: false,
                     animation: false,
                     scales: {
-                        y: { beginAtZero: true, min: 0, title: { display: true, text: 'Count' } },
-                        x: { title: { display: true, text: 'P&L %' } }
+                        y: { beginAtZero: true, min: 0, title: { display: true, text: 'Count' }, ticks: { font: { size: 14 } } },
+                        x: { title: { display: true, text: 'P&L %' }, ticks: { font: { size: 14 } } }
                     }
                 }
             });
