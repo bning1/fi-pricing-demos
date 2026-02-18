@@ -96,17 +96,17 @@
             }
             const min = Math.min(...data);
             const max = Math.max(...data);
-            if (max - min < 1e-12) {
-                return {labels: ['0.0%'], data: [data.length]};
-            }
-            const binWidth = (max - min) / nbins || 0.001;
+            const pnlRange = max - min;
+            if (pnlRange < 1e-6) pnlRange = 0.01;
+            const binWidth = pnlRange / nbins;
+            console.log('range/binWidth', pnlRange, binWidth);
             const bins = new Array(nbins).fill(0);
             data.forEach(d => {
                 let idx = Math.floor((d - min) / binWidth) || 0;
                 if (idx > nbins - 1) idx = nbins - 1;
                 bins[idx]++;
             });
-            const labels = Array(nbins).fill().map((_,i) => `${((min + i*binWidth)*100).toFixed(2)}%`);
+            const labels = Array(nbins).fill().map((_,i) => binWidth === 0 ? '0%' : ((min + i*binWidth)*100).toFixed(2) + '%');
             return {labels, data: bins};
         }
 
@@ -162,16 +162,19 @@
                     labels: histData.labels,
                     datasets: [{
                         label: 'Frequency',
-                        data: histData.data,
+                        data: histData.data.map(b => Math.max(b, 0.01)),
                         backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        maxBarThickness: 50,
                         borderColor: 'rgba(75, 192, 192, 1)',
                         borderWidth: 1
                     }]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
                     scales: {
-                        y: { beginAtZero: true, title: { display: true, text: 'Count' } },
+                        y: { beginAtZero: true, min: 0, title: { display: true, text: 'Count' } },
                         x: { title: { display: true, text: 'P&L %' } }
                     }
                 }
