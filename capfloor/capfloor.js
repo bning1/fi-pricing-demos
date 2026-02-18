@@ -79,4 +79,4 @@ function computeCapFloor() {
     'Frequency': freqMonths,
     'Discount (%)': discount * 100
   });
-}
+}window.computeCapFloor = computeCapFloor;
