@@ -84,6 +84,29 @@
 
         let histChart, sortedChart;
 
+        function histogram(data, nbins = 20) {
+            if (data.length === 0) {
+                return {labels: [], data: []};
+            }
+            const min = Math.min(...data);
+            const max = Math.max(...data);
+            if (max - min < 1e-12) {
+                return {labels: ['0.0%'], data: [data.length]};
+            }
+            const binWidth = (max - min) / nbins;
+            const bins = new Array(nbins).fill(0);
+            data.forEach(d => {
+                let idx = Math.floor((d - min) / binWidth);
+                idx = Math.max(0, Math.min(nbins - 1, idx));
+                bins[idx]++;
+            });
+            const labels = bins.map((_, i) => {
+                const mid = min + (i + 0.5) * binWidth;
+                return (mid * 100).toFixed(1) + '%';
+            });
+            return {labels, data: bins};
+        }
+
         function updateSpans() {
             document.getElementById('wStockVal').textContent = document.getElementById('wStock').value + '%';
             document.getElementById('wBondVal').textContent = document.getElementById('wBond').value + '%';
@@ -122,31 +145,20 @@
             const variance = pnls.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
             const std = Math.sqrt(variance);
 
-            // Histogram
-            const minP = Math.min(...pnls);
-            const maxP = Math.max(...pnls);
-            const binSize = (maxP - minP) / 20 || 0.01;
-            const bins = new Array(20).fill(0);
-            pnls.forEach(p => {
-                let binIdx = Math.floor((p - minP) / binSize);
-                binIdx = Math.max(0, Math.min(19, binIdx));
-                bins[binIdx]++;
-            });
-            const binLabels = [];
-            for (let i = 0; i < 20; i++) {
-                const label = ((minP + i * binSize) * 100).toFixed(1);
-                binLabels.push(label);
-            }
+            // Histogram - robust binning
+            const histData = histogram(pnls, 20);
+            console.log('hist bins:', histData.data);
+            console.log('pnls range:', Math.min(...pnls), 'to', Math.max(...pnls));
 
             if (histChart) histChart.destroy();
             const histCtx = document.getElementById('histChart').getContext('2d');
             histChart = new Chart(histCtx, {
                 type: 'bar',
                 data: {
-                    labels: binLabels,
+                    labels: histData.labels,
                     datasets: [{
                         label: 'Frequency',
-                        data: bins,
+                        data: histData.data,
                         backgroundColor: 'rgba(75, 192, 192, 0.6)',
                         borderColor: 'rgba(75, 192, 192, 1)',
                         borderWidth: 1
