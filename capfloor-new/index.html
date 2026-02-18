@@ -1,0 +1,41 @@
+&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+  &lt;meta charset=&quot;UTF-8&quot;&gt;
+  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
+  &lt;title&gt;Cap/Floor (New) - FI Pricing Demo&lt;/title&gt;
+  &lt;link rel=&quot;stylesheet&quot; href=&quot;styles.css&quot;&gt;
+  &lt;script src=&quot;https://cdn.jsdelivr.net/npm/chart.js&quot;&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;div class=&quot;fi-container&quot;&gt;
+    &lt;h1&gt;Cap / Floor Pricer&lt;/h1&gt;
+    &lt;p class=&quot;subtitle&quot;&gt;Bachelier (Normal) Model | Flat Curves | Caplet Strip Table + Sensitivities&lt;/p&gt;
+    
+    &lt;div class=&quot;form-section&quot;&gt;
+      &lt;form id=&quot;pricingForm&quot;&gt;
+        &lt;label&gt;Notional ($): &lt;input type=&quot;number&quot; id=&quot;notional&quot; value=&quot;100000000&quot; min=&quot;0&quot; step=&quot;1000000&quot;&gt;&lt;/label&gt;
+        &lt;label&gt;Maturity (years): &lt;input type=&quot;number&quot; id=&quot;maturity&quot; value=&quot;5&quot; min=&quot;0.1&quot; step=&quot;0.1&quot;&gt;&lt;/label&gt;
+        &lt;label&gt;Tau (years): &lt;input type=&quot;number&quot; id=&quot;tau&quot; value=&quot;0.25&quot; min=&quot;0.01&quot; step=&quot;0.01&quot;&gt;&lt;/label&gt;
+        &lt;label&gt;Vol (%): &lt;input type=&quot;number&quot; id=&quot;vol&quot; value=&quot;20&quot; min=&quot;0&quot; step=&quot;0.1&quot;&gt;&lt;/label&gt;
+        &lt;label&gt;Forward F (%): &lt;input type=&quot;number&quot; id=&quot;forward&quot; value=&quot;5&quot; min=&quot;0&quot; step=&quot;0.01&quot;&gt;&lt;/label&gt;
+        &lt;label&gt;Discount r (%): &lt;input type=&quot;number&quot; id=&quot;rate&quot; value=&quot;3&quot; min=&quot;0&quot; step=&quot;0.01&quot;&gt;&lt;/label&gt;
+        &lt;label&gt;Strike K (%): &lt;input type=&quot;number&quot; id=&quot;strike&quot; value=&quot;5&quot; min=&quot;0&quot; step=&quot;0.01&quot;&gt;&lt;/label&gt;
+        &lt;label&gt;&lt;input type=&quot;checkbox&quot; id=&quot;isCap&quot; checked&gt; Cap (uncheck for Floor)&lt;/label&gt;
+        &lt;button type=&quot;button&quot; onclick=&quot;compute()&quot;&gt;Compute NPV &amp; Sens&lt;/button&gt;
+      &lt;/form&gt;
+    &lt;/div&gt;
+    
+    &lt;div id=&quot;results&quot;&gt;&lt;/div&gt;
+    
+    &lt;div class=&quot;chart-container&quot;&gt;
+      &lt;canvas id=&quot;strikeChart&quot;&gt;&lt;/canvas&gt;
+    &lt;/div&gt;
+    
+    &lt;div class=&quot;chart-container&quot;&gt;
+      &lt;canvas id=&quot;volChart&quot;&gt;&lt;/canvas&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+  &lt;script src=&quot;script.js&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
