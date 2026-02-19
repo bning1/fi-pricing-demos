@@ -1,0 +1,103 @@
+/* Convertible Bond New Model Demo Styles (aligned with existing demos) */
+
+:root{
+  --bg: #f5f7fa;
+  --card: #fff;
+  --text: #333;
+  --muted: #666;
+  --accent: #4CAF50;
+  --array: 0 8px 32px rgba(0,0,0,.1);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e6eef7 100%);
+  color: var(--text);
+}
+
+h1 {
+  text-align: center;
+  margin: 28px 0 10px;
+  font-size: 1.8rem;
+  color: #2c3e50;
+}
+
+.subtitle { font-size: 0.95rem; color: var(--muted); }
+
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px 40px;
+}
+
+.inputs, .outputs {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 20px 18px;
+  box-shadow: var(--array);
+}
+
+.inputs h2, .outputs h2 { margin-top: 0; color: #2c3e50; }
+
+label {
+  display: block;
+  margin-top: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #555;
+}
+
+input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+
+input[type="range"] { width: 100%; margin-top: 6px; }
+
+.value-display {
+  background: #e8f0f8;
+  padding: 6px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  margin-top: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #234;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid #eee;
+}
+.metric:last-child {
+  border-bottom: none;
+  font-size: 1.1em;
+  font-weight: bold;
+  background: #4CAF50;
+  color: white;
+  padding: 14px;
+  border-radius: 8px;
+  margin: 12px 0 6px;
+}
+canvas {
+  width: 100%;
+  height: 260px;
+  border-radius: 8px;
+  background: #fff;
+  display: block;
+  margin-top: 14px;
+}
+
+@media (max-width: 900px){
+  .container { grid-template-columns: 1fr; }
+}
