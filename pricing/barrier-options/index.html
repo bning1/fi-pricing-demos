@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barrier Options Pricer (Reiner-Rubinstein)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Barrier Options Pricer (Reiner-Rubinstein)</h1>
+        <p>Price all 8 vanilla barrier options using closed-form formulas. Toggle type, view all 8 prices, sensitivity charts.</p>
+        
+        <form id="barrierForm">
+            <div class="inputs-grid">
+                <div class="input-group">
+                    <label>Spot Price S0 ($):</label>
+                    <input type="number" id="S0" value="100" step="1" min="0.01">
+                </div>
+                <div class="input-group">
+                    <label>Barrier H ($):</label>
+                    <input type="number" id="H" value="110" step="1" min="0.01">
+                </div>
+                <div class="input-group">
+                    <label>Strike K ($):</label>
+                    <input type="number" id="K" value="100" step="1" min="0.01">
+                </div>
+                <div class="input-group">
+                    <label>Risk-Free Rate r (%):</label>
+                    <input type="number" id="r" value="5" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label>Volatility σ (%):</label>
+                    <input type="number" id="sigma" value="20" step="0.1" min="0.1">
+                </div>
+                <div class="input-group">
+                    <label>Time to Maturity T (years):</label>
+                    <input type="number" id="T" value="1" step="0.1" min="0.01">
+                </div>
+            </div>
+            <button type="submit">Price All 8 Barriers</button>
+        </form>
+
+        <div id="results" style="display:none;">
+            <h2>Results</h2>
+            <table id="barrierTable">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Direction</th>
+                        <th>In/Out</th>
+                        <th>Call/Put</th>
+                        <th>Price ($)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            
+            <h2>Payoff Sensitivity (Strike vs Price)</h2>
+            <canvas id="sensitivityChart"></canvas>
+            
+            <a href="../../index.html" class="back-link">← Back to Hub</a>
+        </div>
+    </div>
+    <script src="barrier.js"></script>
+    <script>
+        // Simple wrapper UI for the 8 barrier types
+        const types = [
+            { name: 'UIC', label: 'Up & In Call' },
+            { name: 'UIP', label: 'Up & In Put' },
+            { name: 'UOC', label: 'Up & Out Call' },
+            { name: 'UOP', label: 'Up & Out Put' },
+            { name: 'DIC', label: 'Down & In Call' },
+            { name: 'DIP', label: 'Down & In Put' },
+            { name: 'DOC', label: 'Down & Out Call' },
+            { name: 'DOP', label: 'Down & Out Put' }
+        ];
+
+        document.getElementById('barrierForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const S0 = parseFloat(document.getElementById('S0').value);
+            const H = parseFloat(document.getElementById('H').value);
+            const K = parseFloat(document.getElementById('K').value);
+            const r = parseFloat(document.getElementById('r').value) / 100;
+            const sigma = parseFloat(document.getElementById('sigma').value) / 100;
+            const T = parseFloat(document.getElementById('T').value);
+
+            // Price all 8 types
+            const results = [];
+            types.forEach(({ name, label }) => {
+                const pricer = window.BarrierPricers[name];
+                const price = pricer(S0, H, K, r, sigma, T);
+                results.push({
+                    name, label, price,
+                    direction: name.startsWith('U') ? 'Up' : 'Down',
+                    inout: name.includes('I') ? 'In' : 'Out',
+                    callput: name.endsWith('C') ? 'Call' : 'Put'
+                });
+            });
+
+            // Update table
+            const tbody = document.querySelector('#barrierTable tbody');
+            tbody.innerHTML = results.map(r => `
+                <tr>
+                    <td><strong>${r.name}</strong></td>
+                    <td>${r.direction}</td>
+                    <td>${r.inout}</td>
+                    <td>${r.callput}</td>
+                    <td class="positive">$${r.price.toFixed(4)}</td>
+                </tr>
+            `).join('');
+
+            // Sensitivity chart: Price vs Strike
+            const strikes = Array.from({length: 20}, (_, i) => K * (0.5 + i * 0.1));
+            const priceSets = {};
+            types.forEach(({ name }) => {
+                priceSets[name] = strikes.map(k => window.BarrierPricers[name](S0, H, k, r, sigma, T));
+            });
+
+            const ctx = document.getElementById('sensitivityChart').getContext('2d');
+            if (window.chart) window.chart.destroy();
+            window.chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: strikes.map(k => k.toFixed(1)),
+                    datasets: types.map(({ name }, i) => ({
+                        label: name,
+                        data: priceSets[name],
+                        borderColor: `hsl(${i * 45}, 70%, 50%)`,
+                        tension: 0.3
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'top' } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            document.getElementById('results').style.display = 'block';
+        });
+    </script>
+</body>
+</html>
