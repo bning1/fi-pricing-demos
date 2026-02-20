@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cap/Floor Pricer (Black '76)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../../styles.css">
+    <style>
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        input, select { width: 100%; padding: 8px; margin: 5px 0; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        #results { margin-top: 20px; }
+        canvas { max-height: 400px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Cap/Floor Pricer (Black '76 Multi-Caplet)</h1>
+        <p>Price cap (series of caplets) or floor using Black '76 model. Notional in bps.</p>
+        <form id="pricingForm">
+            <label>Notional ($mm): <input type="number" id="notional" value="100" step="10"></label>
+            <label>Start Date: <input type="date" id="startDate" value="2026-03-01"></label>
+            <label>End Date: <input type="date" id="endDate" value="2027-03-01"></label>
+            <label>Fixing Lag (days): <input type="number" id="lag" value="2" min="0"></label>
+            <label>Payment Freq (months): <input type="number" id="freq" value="6" min="1"></label>
+            <label>Day Count: <select id="dayCount">
+                <option value="ACT/360">ACT/360</option>
+                <option value="30/360">30/360</option>
+            </select></label>
+            <label>Strike (%): <input type="number" id="strike" value="5.0" step="0.1"></label>
+            <label>Vol (%): <input type="number" id="vol" value="20.0" step="0.1"></label>
+            <label>Libor Curve (%): <input type="number" id="libor" value="4.5" step="0.1"></label>
+            <label>Type: <select id="type">
+                <option value="cap">Cap</option>
+                <option value="floor">Floor</option>
+            </select></label>
+            <button type="submit">Price</button>
+        </form>
+        <div id="results">
+            <table id="capletTable">
+                <thead><tr><th>Period</th><th>Start</th><th>End</th><th>DF</th><th>Forward</th><th>Caplet/Floorlet</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <canvas id="chart"></canvas>
+            <p id="totalPrice"></p>
+        </div>
+        <a href="../../index.html">← Back to Hub</a>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
