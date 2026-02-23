@@ -79,12 +79,25 @@
 
         document.getElementById('barrierForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            const S0 = parseFloat(document.getElementById('S0').value);
-            const H = parseFloat(document.getElementById('H').value);
-            const K = parseFloat(document.getElementById('K').value);
-            const r = parseFloat(document.getElementById('r').value) / 100;
-            const sigma = parseFloat(document.getElementById('sigma').value) / 100;
-            const T = parseFloat(document.getElementById('T').value);
+
+            // Read actual field values; fall back to defaults if empty/NaN
+            function safeParse(id, fallback) {
+                var v = parseFloat(document.getElementById(id).value);
+                return Number.isFinite(v) ? v : fallback;
+            }
+
+            const S0    = safeParse('S0', 100);
+            const H     = safeParse('H', 110);
+            const K     = safeParse('K', 100);
+            const r     = safeParse('r', 5) / 100;
+            const sigma = safeParse('sigma', 20) / 100;
+            const T     = safeParse('T', 1);
+
+            // Basic validation on actual values
+            if (S0 <= 0 || H <= 0 || K <= 0 || sigma <= 0 || T <= 0) {
+                alert('Please enter positive values for S0, H, K, σ, and T.');
+                return;
+            }
 
             // Price all 8 types
             const results = [];
