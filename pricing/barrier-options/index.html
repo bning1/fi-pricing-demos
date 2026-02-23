@@ -12,33 +12,34 @@
         <h1>🛡️ Barrier Options Pricer (Reiner-Rubinstein)</h1>
         <p>Price all 8 vanilla barrier options using closed-form formulas. Toggle type, view all 8 prices, sensitivity charts.</p>
         
-        <form id="barrierForm">
+        <form id="barrierForm" novalidate>
             <div class="inputs-grid">
                 <div class="input-group">
-                    <label>Spot Price S0 ($):</label>
-                    <input type="number" id="S0" value="100" step="1" min="0.01">
+                    <label for="S0">Spot Price S₀ ($):</label>
+                    <input type="number" id="S0" value="100" step="any">
                 </div>
                 <div class="input-group">
-                    <label>Barrier H ($):</label>
-                    <input type="number" id="H" value="110" step="1" min="0.01">
+                    <label for="H">Barrier H ($):</label>
+                    <input type="number" id="H" value="110" step="any">
                 </div>
                 <div class="input-group">
-                    <label>Strike K ($):</label>
-                    <input type="number" id="K" value="100" step="1" min="0.01">
+                    <label for="K">Strike K ($):</label>
+                    <input type="number" id="K" value="100" step="any">
                 </div>
                 <div class="input-group">
-                    <label>Risk-Free Rate r (%):</label>
-                    <input type="number" id="r" value="5" step="0.1">
+                    <label for="r">Risk-Free Rate r (%):</label>
+                    <input type="number" id="r" value="5" step="any">
                 </div>
                 <div class="input-group">
-                    <label>Volatility σ (%):</label>
-                    <input type="number" id="sigma" value="20" step="0.1" min="0.1">
+                    <label for="sigma">Volatility σ (%):</label>
+                    <input type="number" id="sigma" value="20" step="any">
                 </div>
                 <div class="input-group">
-                    <label>Time to Maturity T (years):</label>
-                    <input type="number" id="T" value="1" step="0.1" min="0.01">
+                    <label for="T">Time to Maturity T (years):</label>
+                    <input type="number" id="T" value="1" step="any">
                 </div>
             </div>
+            <div id="barrier-errors" style="color:#e53e3e; margin-bottom:1rem; display:none;"></div>
             <button type="submit">Price All 8 Barriers</button>
         </form>
 
@@ -65,8 +66,7 @@
     </div>
     <script src="barrier.js"></script>
     <script>
-        // Simple wrapper UI for the 8 barrier types
-        const types = [
+        var types = [
             { name: 'UIC', label: 'Up & In Call' },
             { name: 'UIP', label: 'Up & In Put' },
             { name: 'UOC', label: 'Up & Out Call' },
@@ -77,72 +77,101 @@
             { name: 'DOP', label: 'Down & Out Put' }
         ];
 
-        document.getElementById('barrierForm').addEventListener('submit', (e) => {
+        function safeParse(id, fallback) {
+            var v = parseFloat(document.getElementById(id).value);
+            return Number.isFinite(v) ? v : fallback;
+        }
+
+        function showErrors(errs) {
+            var el = document.getElementById('barrier-errors');
+            if (errs && errs.length) {
+                el.innerHTML = errs.join('<br>');
+                el.style.display = 'block';
+            } else {
+                el.innerHTML = '';
+                el.style.display = 'none';
+            }
+        }
+
+        document.getElementById('barrierForm').addEventListener('submit', function (e) {
             e.preventDefault();
 
             // Read actual field values; fall back to defaults if empty/NaN
-            function safeParse(id, fallback) {
-                var v = parseFloat(document.getElementById(id).value);
-                return Number.isFinite(v) ? v : fallback;
-            }
+            var S0    = safeParse('S0', 100);
+            var H     = safeParse('H', 110);
+            var K     = safeParse('K', 100);
+            var r     = safeParse('r', 5) / 100;
+            var sigma = safeParse('sigma', 20) / 100;
+            var T     = safeParse('T', 1);
 
-            const S0    = safeParse('S0', 100);
-            const H     = safeParse('H', 110);
-            const K     = safeParse('K', 100);
-            const r     = safeParse('r', 5) / 100;
-            const sigma = safeParse('sigma', 20) / 100;
-            const T     = safeParse('T', 1);
+            // Validate actual parsed values
+            var errors = [];
+            if (!(S0 > 0))            errors.push('Spot S₀ must be positive (got ' + S0 + ')');
+            if (!(H > 0))             errors.push('Barrier H must be positive (got ' + H + ')');
+            if (!(K > 0))             errors.push('Strike K must be positive (got ' + K + ')');
+            if (!Number.isFinite(r))  errors.push('Rate r must be a finite number');
+            if (!(sigma > 0))         errors.push('Volatility σ must be positive (got ' + (sigma * 100) + '%)');
+            if (!(T > 0))             errors.push('Maturity T must be positive (got ' + T + ')');
 
-            // Basic validation on actual values
-            if (S0 <= 0 || H <= 0 || K <= 0 || sigma <= 0 || T <= 0) {
-                alert('Please enter positive values for S0, H, K, σ, and T.');
+            if (errors.length) {
+                showErrors(errors);
+                document.getElementById('results').style.display = 'none';
                 return;
             }
+            showErrors([]);
 
             // Price all 8 types
-            const results = [];
-            types.forEach(({ name, label }) => {
-                const pricer = window.BarrierPricers[name];
-                const price = pricer(S0, H, K, r, sigma, T);
+            var results = [];
+            types.forEach(function (t) {
+                var pricer = window.BarrierPricers[t.name];
+                var price = pricer(S0, H, K, r, sigma, T);
                 results.push({
-                    name, label, price,
-                    direction: name.startsWith('U') ? 'Up' : 'Down',
-                    inout: name.includes('I') ? 'In' : 'Out',
-                    callput: name.endsWith('C') ? 'Call' : 'Put'
+                    name: t.name,
+                    label: t.label,
+                    price: price,
+                    direction: t.name.charAt(0) === 'U' ? 'Up' : 'Down',
+                    inout: t.name.charAt(1) === 'I' ? 'In' : 'Out',
+                    callput: t.name.charAt(2) === 'C' ? 'Call' : 'Put'
                 });
             });
 
             // Update table
-            const tbody = document.querySelector('#barrierTable tbody');
-            tbody.innerHTML = results.map(r => `
-                <tr>
-                    <td><strong>${r.name}</strong></td>
-                    <td>${r.direction}</td>
-                    <td>${r.inout}</td>
-                    <td>${r.callput}</td>
-                    <td class="positive">$${r.price.toFixed(4)}</td>
-                </tr>
-            `).join('');
+            var tbody = document.querySelector('#barrierTable tbody');
+            tbody.innerHTML = results.map(function (r) {
+                return '<tr>' +
+                    '<td><strong>' + r.name + '</strong></td>' +
+                    '<td>' + r.direction + '</td>' +
+                    '<td>' + r.inout + '</td>' +
+                    '<td>' + r.callput + '</td>' +
+                    '<td class="positive">$' + r.price.toFixed(4) + '</td>' +
+                '</tr>';
+            }).join('');
 
             // Sensitivity chart: Price vs Strike
-            const strikes = Array.from({length: 20}, (_, i) => K * (0.5 + i * 0.1));
-            const priceSets = {};
-            types.forEach(({ name }) => {
-                priceSets[name] = strikes.map(k => window.BarrierPricers[name](S0, H, k, r, sigma, T));
+            var strikes = [];
+            for (var i = 0; i < 20; i++) strikes.push(K * (0.5 + i * 0.1));
+
+            var priceSets = {};
+            types.forEach(function (t) {
+                priceSets[t.name] = strikes.map(function (k) {
+                    return window.BarrierPricers[t.name](S0, H, k, r, sigma, T);
+                });
             });
 
-            const ctx = document.getElementById('sensitivityChart').getContext('2d');
+            var ctx = document.getElementById('sensitivityChart').getContext('2d');
             if (window.chart) window.chart.destroy();
             window.chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: strikes.map(k => k.toFixed(1)),
-                    datasets: types.map(({ name }, i) => ({
-                        label: name,
-                        data: priceSets[name],
-                        borderColor: `hsl(${i * 45}, 70%, 50%)`,
-                        tension: 0.3
-                    }))
+                    labels: strikes.map(function (k) { return k.toFixed(1); }),
+                    datasets: types.map(function (t, i) {
+                        return {
+                            label: t.name,
+                            data: priceSets[t.name],
+                            borderColor: 'hsl(' + (i * 45) + ', 70%, 50%)',
+                            tension: 0.3
+                        };
+                    })
                 },
                 options: {
                     responsive: true,
